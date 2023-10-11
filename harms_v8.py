@@ -396,10 +396,12 @@ class GUI:
         h.top_layer = hm.AttackGraph()
         # hosts 查看目前的nodes个数
         # 除去attacker(label==1)
-        count_expect_attacker = len([node for node in self.nodes if node[3] != 1])
+        self.nodes_withoutattacker = [node for node in self.nodes if node[3] != 1]
+        count_expect_attacker = len(self.nodes_withoutattacker)
         hosts = [hm.Host("Host {}".format(i)) for i in range(count_expect_attacker)]
         print(hosts)
         print(self.nodes)
+        print(self.nodes_withoutattacker)
 
         # 设置 vulnerabilities
         # 1. 检查self.vulnerabilities, node_id - host
@@ -438,47 +440,93 @@ class GUI:
         # add_edge(A,B) creates a uni-directional from A -> B.
 
         # 默认host[0]是attacker
+        # 根据self.lines
+        for line in self.lines:
+            print("For arc:", line)
 
-        h[0].add_edge(attacker, hosts[1]) 
-        h[0].add_edge(attacker, hosts[2])
-        h[0].add_edge(hosts[1], hosts[2])  
+            # 找出self.lines[3][4]对应的node_id - 起始、结束点
+            node_id_to_find_1 = line[3]
+            node_id_to_find_2 = line[4]
+            # if node_id_to_find == attacker_node_id
+            attacker_node_ids = [node[2] for node in self.nodes if node[3] == 1]
+            if len(attacker_node_ids) != 1:
+                print("more than 1 attacker")
+                break
+            else:
+                attacker_node_id = attacker_node_ids[0]
+                print("attacker_node_id = ", attacker_node_id)
+
+            index_1 = None
+            index_2 = None
+            try:
+                index_1 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_1)
+                print(f"The element with node_id {node_id_to_find_1} is at Host {index_1}")
+            except ValueError:
+                print(f"The node_id {node_id_to_find_1} was not found in self.nodes.")
+            try:
+                index_2 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_2)
+                print(f"The element with node_id {node_id_to_find_2} is at Host {index_2}")
+            except ValueError:
+                print(f"The node_id {node_id_to_find_2} was not found in self.nodes.")
+            
+            if node_id_to_find_1 == attacker_node_id: # attacker(1) --> (2)
+                h[0].add_edge(attacker, hosts[index_2])
+                print(f"attacker --> host[{index_2}]")
+            elif node_id_to_find_2 == attacker_node_id: # (1) --> attacker(2)
+                print("wrong arc")
+                break
+            else:
+                # h[0].add_edge(...)
+                h[0].add_edge(hosts[index_1], hosts[index_2])
+                print(f"host[{index_1}] --> host[{index_2}]")
 
         # Now we set the attacker and target
         h[0].source = attacker
-        h[0].target = hosts[2]
+        # 找出哪个是target
+        
+        # target_index = None
+        # for i, node in enumerate(self.nodes):
+        #     if node[3] == 2:
+        #         target_index == i
+        #         break
+        # if target_index is not None:
+        #     print("target is Host ", target_index)
+        # else:
+        #     print("no target setted")
+        # # h[0].target = hosts[]
 
-        # do some flow up
-        h.flowup()
+        # # do some flow up
+        # h.flowup()
 
-        # Now we will run some metrics
-        result = hm.HarmSummary(h).show()
+        # # Now we will run some metrics
+        # result = hm.HarmSummary(h).show()
 
-        popup = tk.Toplevel(self.root)
-        popup.title("Pop-up Window")
+        # popup = tk.Toplevel(self.root)
+        # popup.title("Pop-up Window")
 
-        label = tk.Label(popup)
-        label.pack(padx=20, pady=20)
+        # label = tk.Label(popup)
+        # label.pack(padx=20, pady=20)
 
-        # 创建一个多行文本输入框
-        text_input = tk.Text(popup, wrap=tk.WORD, width=60, height=30)
-        text_input.pack(padx=20, pady=20)
+        # # 创建一个多行文本输入框
+        # text_input = tk.Text(popup, wrap=tk.WORD, width=60, height=30)
+        # text_input.pack(padx=20, pady=20)
 
-        long_text = """Metrics              Values\n
-        -----------------------  ---------\n
-        Number of hosts                             3\n
-        Risk                                       20\n
-        Cost                                        4\n
-        Mean of attack path lengths                 1.5\n
-        Mode of attack path lengths                 2\n
-        Standard Deviation of attack path lengths   0.707107\n
-        Shortest attack path length                 1\n
-        Return on Attack                            5\n
-        Density                                     0.5\n
-        Probability of attack success               0.6"""
-        text_input.insert(tk.END, long_text)
+        # long_text = """Metrics              Values\n
+        # -----------------------  ---------\n
+        # Number of hosts                             3\n
+        # Risk                                       20\n
+        # Cost                                        4\n
+        # Mean of attack path lengths                 1.5\n
+        # Mode of attack path lengths                 2\n
+        # Standard Deviation of attack path lengths   0.707107\n
+        # Shortest attack path length                 1\n
+        # Return on Attack                            5\n
+        # Density                                     0.5\n
+        # Probability of attack success               0.6"""
+        # text_input.insert(tk.END, long_text)
 
-        close_button = tk.Button(popup, text="Close", command=popup.destroy)
-        close_button.pack()
+        # close_button = tk.Button(popup, text="Close", command=popup.destroy)
+        # close_button.pack()
 
     # --------------------------------- Attack tree - Lower layer ----------
 
