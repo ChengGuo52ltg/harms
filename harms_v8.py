@@ -95,6 +95,15 @@ class GUI:
         self.AG_arc_selected2 = []
         self.AT_arc_selected2 = [] # [(id,tags),(id,tags)]
 
+        # ATTACK TREE:
+        self.vulnerabilities = []  # 用于存储漏洞信息的列表 
+        # [x, y, vul_id, 属于的node_id, input_info]
+        # each -> ["Name","Risk","Probability","Cost","Impact"]
+        self.andgate = [] # 储存 [x, y, and_gate_id, node_id]
+        self.orgate = [] # 储存 [x, y, or_gate_id, or_gate_half_id, node_id]
+        self.gate_lines = [] # [gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id]
+
+
         # Buttons
         self.btn_node = ttk.Button(
             self.root,
@@ -411,96 +420,132 @@ class GUI:
         # 5. flowup()
         # 6. report analysis
 
-        # then we will make a basic attack tree for each host
-        for host in hosts:
+        # for vul in self.vulnerabilities:
+            # node_id = vul[3]
+        print("all vuls: ",self.vulnerabilities)
+
+        for index, host in enumerate(hosts):
             host.lower_layer = hm.AttackTree()
-            # We will make two vulnerabilities and give some metrics
-            vulnerability1 = hm.Vulnerability('CVE-0000', values = {
-                'risk' : 10,
-                'cost' : 4,
-                'probability' : 0.5,
-                'impact' : 12
-            })
-            vulnerability2 = hm.Vulnerability('CVE-0001', values = {
-                'risk' : 1,
-                'cost' : 5,
-                'probability' : 0.2,
-                'impact' : 2
-            })
-            # basic_at creates just one OR gate and puts all vulnerabilites
-            # the children nodes
-            host.lower_layer.basic_at([vulnerability1, vulnerability2])
 
-        # Now we will create an Attacker. This is not a physical node but it exists to describe
-        # the potential entry points of attackers.
-        attacker = hm.Attacker() 
+            # e.g. index=0
+            # hosts[0]对应的self.nodes_withoutattacker[0] 的node_id是多少
+            node_id = self.nodes_withoutattacker[index][2]
+            print("host - node_id = ", node_id)
 
-        # To add edges we simply use the add_edge function
-        # here h[0] refers to the top layer
-        # add_edge(A,B) creates a uni-directional from A -> B.
+            # 筛选这个node_id下的vul 
+            vuls = None
+            vuls = [vul for vul in self.vulnerabilities if vul[3] == node_id]
+            print("host - vuls = ", vuls)
 
-        # 默认host[0]是attacker
-        # 根据self.lines
-        for line in self.lines:
-            print("For arc:", line)
-
-            # 找出self.lines[3][4]对应的node_id - 起始、结束点
-            node_id_to_find_1 = line[3]
-            node_id_to_find_2 = line[4]
-            # if node_id_to_find == attacker_node_id
-            attacker_node_ids = [node[2] for node in self.nodes if node[3] == NODE_ATTACKER]
-            if len(attacker_node_ids) != 1:
-                print("more than 1 attacker")
-                return
-            else:
-                attacker_node_id = attacker_node_ids[0]
-                print("attacker_node_id = ", attacker_node_id)
-
-            index_1 = None
-            index_2 = None
-            try:
-                index_1 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_1)
-                print(f"The element with node_id {node_id_to_find_1} is at Host {index_1}")
-            except ValueError:
-                print(f"The node_id {node_id_to_find_1} was not found in self.nodes.")
-            try:
-                index_2 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_2)
-                print(f"The element with node_id {node_id_to_find_2} is at Host {index_2}")
-            except ValueError:
-                print(f"The node_id {node_id_to_find_2} was not found in self.nodes.")
+            # make vuls
+            # ...
+            if vuls:
+                vulnerabilities = []
+                for vul in vuls:
+                    vulnerability = None
+                    vulnerability = hm.Vulnerability(vul[4]["Name"], values = {
+                    'risk' : vul[4]["Risk"],
+                    'cost' : vul[4]["Probability"],
+                    'probability' : vul[4]["Cost"],
+                    'impact' : vul[4]["Impact"]
+                    })
+                    if vulnerability:
+                        vulnerabilities.append(vulnerability)
+                print(vulnerabilities)
+            # make gates
+            # ...
             
-            if node_id_to_find_1 == attacker_node_id: # attacker(1) --> (2)
-                h[0].add_edge(attacker, hosts[index_2])
-                print(f"attacker --> host[{index_2}]")
-            elif node_id_to_find_2 == attacker_node_id: # (1) --> attacker(2)
-                print("wrong arc")
-                return
-            else:
-                # h[0].add_edge(...)
-                h[0].add_edge(hosts[index_1], hosts[index_2])
-                print(f"host[{index_1}] --> host[{index_2}]")
 
-        # Now we set the attacker and target
-        h[0].source = attacker
-        # 找出哪个是target
+        # # then we will make a basic attack tree for each host
+        # for host in hosts:
+        #     host.lower_layer = hm.AttackTree()
+        #     # We will make two vulnerabilities and give some metrics
+        #     vulnerability1 = hm.Vulnerability('CVE-0000', values = {
+        #         'risk' : 10,
+        #         'cost' : 4,
+        #         'probability' : 0.5,
+        #         'impact' : 12
+        #     })
+        #     vulnerability2 = hm.Vulnerability('CVE-0001', values = {
+        #         'risk' : 1,
+        #         'cost' : 5,
+        #         'probability' : 0.2,
+        #         'impact' : 2
+        #     })
+        #     # basic_at creates just one OR gate and puts all vulnerabilites
+        #     # the children nodes
+        #     host.lower_layer.basic_at([vulnerability1, vulnerability2])
+
+        # # Now we will create an Attacker. This is not a physical node but it exists to describe
+        # # the potential entry points of attackers.
+        # attacker = hm.Attacker() 
+
+        # # To add edges we simply use the add_edge function
+        # # here h[0] refers to the top layer
+        # # add_edge(A,B) creates a uni-directional from A -> B.
+
+        # # 默认host[0]是attacker
+        # # 根据self.lines
+        # for line in self.lines:
+        #     print("For arc:", line)
+
+        #     # 找出self.lines[3][4]对应的node_id - 起始、结束点
+        #     node_id_to_find_1 = line[3]
+        #     node_id_to_find_2 = line[4]
+        #     # if node_id_to_find == attacker_node_id
+        #     attacker_node_ids = [node[2] for node in self.nodes if node[3] == NODE_ATTACKER]
+        #     if len(attacker_node_ids) != 1:
+        #         print("more than 1 attacker")
+        #         return
+        #     else:
+        #         attacker_node_id = attacker_node_ids[0]
+        #         print("attacker_node_id = ", attacker_node_id)
+
+        #     index_1 = None
+        #     index_2 = None
+        #     try:
+        #         index_1 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_1)
+        #         print(f"The element with node_id {node_id_to_find_1} is at Host {index_1}")
+        #     except ValueError:
+        #         print(f"The node_id {node_id_to_find_1} was not found in self.nodes.")
+        #     try:
+        #         index_2 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_2)
+        #         print(f"The element with node_id {node_id_to_find_2} is at Host {index_2}")
+        #     except ValueError:
+        #         print(f"The node_id {node_id_to_find_2} was not found in self.nodes.")
+            
+        #     if node_id_to_find_1 == attacker_node_id: # attacker(1) --> (2)
+        #         h[0].add_edge(attacker, hosts[index_2])
+        #         print(f"attacker --> host[{index_2}]")
+        #     elif node_id_to_find_2 == attacker_node_id: # (1) --> attacker(2)
+        #         print("wrong arc")
+        #         return
+        #     else:
+        #         # h[0].add_edge(...)
+        #         h[0].add_edge(hosts[index_1], hosts[index_2])
+        #         print(f"host[{index_1}] --> host[{index_2}]")
+
+        # # Now we set the attacker and target
+        # h[0].source = attacker
+        # # 找出哪个是target
         
-        target_index = None
-        for i, node in enumerate(self.nodes_withoutattacker):
-            if node[3] == NODE_TARGET:
-                target_index = i
-                break
-        if target_index is not None:
-            print(f"target is Host [{target_index}]")
-            h[0].target = hosts[target_index]
-        else:
-            print("no target setted")
-            return
+        # target_index = None
+        # for i, node in enumerate(self.nodes_withoutattacker):
+        #     if node[3] == NODE_TARGET:
+        #         target_index = i
+        #         break
+        # if target_index is not None:
+        #     print(f"target is Host [{target_index}]")
+        #     h[0].target = hosts[target_index]
+        # else:
+        #     print("no target setted")
+        #     return
 
-        # do some flow up
-        h.flowup()
+        # # do some flow up
+        # h.flowup()
 
-        # Now we will run some metrics
-        hm.HarmSummary(h).show()
+        # # Now we will run some metrics
+        # hm.HarmSummary(h).show()
 
         # result = hm.HarmSummary(h).show()
 
@@ -586,12 +631,6 @@ class GUI:
                 bg="white"
             )
             self.AT_canvas.place(x=140, y=10, anchor='nw')
-
-            self.vulnerabilities = []  # 用于存储漏洞信息的列表 
-            # [x, y, vul_id, 属于的node_id, input_info]
-            # each -> ["Name","Risk","Probability","Cost","Impact"]
-            self.andgate = [] # 储存 [x, y, and gate id]
-            self.orgate = [] # 储存 [x, y, or_gate_id, or_gate_half_id]
         
             self.AT_canvas.bind("<Button-1>", self.AT_left_click)
             self.AT_canvas.bind("<Button-3>", self.AT_right_click)
@@ -602,7 +641,7 @@ class GUI:
         # VUL: 添加Vul
         if self.mode == MODE_AT_VUL:
             # 弹出输入信息框，获取用户输入
-            self.vul_info = None
+            # self.vul_info = None
             self.get_vulnerability_info(x,y)
             # save->保存->根据vul_info["Name"]创建文本；cancel->关闭界面
             
@@ -619,10 +658,14 @@ class GUI:
                 start=start_angle, extent=end_angle,
                 outline="black", fill="white",
                 tags='and_gate_tag')
-            print('add AND', and_gate_id)
+
+            node_id = self.nodes[self.active_node_index][2]
             
-            values = x, y, and_gate_id
+            values = x, y, and_gate_id, node_id
             self.andgate.append(values)
+
+            print(f"add AND gate, id={and_gate_id}")
+            print(f"info: {values}")
             
         # OR: 添加 or gate
         elif self.mode == MODE_AT_OR:
@@ -648,10 +691,13 @@ class GUI:
                 style=tk.ARC,
                 tags='or_gate_half_tag')
             
-            print('add OR', or_gate_id, "+", or_gate_half_id)
+            node_id = self.nodes[self.active_node_index][2]
             
-            values = x, y, or_gate_id, or_gate_half_id
+            values = x, y, or_gate_id, or_gate_half_id, node_id
             self.orgate.append(values)
+
+            print(f"add OR gate id={or_gate_id}+{or_gate_half_id}")
+            print(f"info: {values}")
 
         # ARC: 添加 ARC
         elif self.mode == MODE_AT_ARC:
@@ -672,9 +718,15 @@ class GUI:
                     print("draw between", element1_id, element2_id)
                     # if 'vul_tag' not in element2_tag:
                     # 4.绘制线条
-                    self.draw_arc(element1_id, element2_id, element1_tag, element2_tag)
+                    gate_line_id = self.draw_arc(element1_id, element2_id, element1_tag, element2_tag)
                     self.AG_arc_selected2 = []
-                    
+
+                    node_id = self.nodes[self.active_node_index][2]
+                    gate_line_values = gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id
+                    self.gate_lines.append(gate_line_values)
+                    print(f"ARC-gate: {gate_line_values}")
+                    print("Gate_lines: ", self.gate_lines)
+
     def draw_arc(self, id_1, id_2, tag_1, tag_2):
         # 获取元素中心坐标
         x1, y1 = self.get_element_center(id_1, tag_1)
@@ -693,11 +745,11 @@ class GUI:
             x1_shortened, y1_shortened = x1, y1
             x2_shortened, y2_shortened = x2, y2
         # 绘制直线
-        line_id = self.AT_canvas.create_line(
+        gate_line_id = self.AT_canvas.create_line(
             x1_shortened, y1_shortened, x2_shortened, y2_shortened,
             arrow=tk.LAST, width=2, fill="black")
-        # self.lines.append(line_id)
-    
+        return gate_line_id
+
     def get_element_center(self, id, tag):
         # 获取坐标范围
         if 'vul_tag' in tag:
@@ -839,7 +891,7 @@ class GUI:
 
         values = x, y, vul_id, node_id, vul_info # 存进列表
         self.vulnerabilities.append(values)
-        print("vul save end:", self.vul_info)
+        print("vul save end:", vul_info)
         print(self.vulnerabilities)
 
     
