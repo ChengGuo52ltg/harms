@@ -448,10 +448,10 @@ class GUI:
             node_id_to_find_1 = line[3]
             node_id_to_find_2 = line[4]
             # if node_id_to_find == attacker_node_id
-            attacker_node_ids = [node[2] for node in self.nodes if node[3] == 1]
+            attacker_node_ids = [node[2] for node in self.nodes if node[3] == NODE_ATTACKER]
             if len(attacker_node_ids) != 1:
                 print("more than 1 attacker")
-                break
+                return
             else:
                 attacker_node_id = attacker_node_ids[0]
                 print("attacker_node_id = ", attacker_node_id)
@@ -474,7 +474,7 @@ class GUI:
                 print(f"attacker --> host[{index_2}]")
             elif node_id_to_find_2 == attacker_node_id: # (1) --> attacker(2)
                 print("wrong arc")
-                break
+                return
             else:
                 # h[0].add_edge(...)
                 h[0].add_edge(hosts[index_1], hosts[index_2])
@@ -484,21 +484,24 @@ class GUI:
         h[0].source = attacker
         # 找出哪个是target
         
-        # target_index = None
-        # for i, node in enumerate(self.nodes):
-        #     if node[3] == 2:
-        #         target_index == i
-        #         break
-        # if target_index is not None:
-        #     print("target is Host ", target_index)
-        # else:
-        #     print("no target setted")
-        # # h[0].target = hosts[]
+        target_index = None
+        for i, node in enumerate(self.nodes_withoutattacker):
+            if node[3] == NODE_TARGET:
+                target_index = i
+                break
+        if target_index is not None:
+            print(f"target is Host [{target_index}]")
+            h[0].target = hosts[target_index]
+        else:
+            print("no target setted")
+            return
 
-        # # do some flow up
-        # h.flowup()
+        # do some flow up
+        h.flowup()
 
-        # # Now we will run some metrics
+        # Now we will run some metrics
+        hm.HarmSummary(h).show()
+
         # result = hm.HarmSummary(h).show()
 
         # popup = tk.Toplevel(self.root)
