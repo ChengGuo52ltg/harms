@@ -99,8 +99,8 @@ class GUI:
         self.vulnerabilities = []  # 用于存储漏洞信息的列表 
         # [x, y, vul_id, 属于的node_id, input_info]
         # each -> ["Name","Risk","Probability","Cost","Impact"]
-        self.andgate = [] # 储存 [x, y, and_gate_id, node_id]
-        self.orgate = [] # 储存 [x, y, or_gate_id, or_gate_half_id, node_id]
+        self.andgates = [] # 储存 [x, y, and_gate_id, node_id, sub_vuls={vul_id, vul_id, ...}]
+        self.orgates = [] # 储存 [x, y, or_gate_id, or_gate_half_id, node_id, sub_vuls={vul_id, vul_id, ...}]
         self.gate_lines = [] # [gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id]
 
 
@@ -430,13 +430,12 @@ class GUI:
             # e.g. index=0
             # hosts[0]对应的self.nodes_withoutattacker[0] 的node_id是多少
             node_id = self.nodes_withoutattacker[index][2]
-            print("host - node_id = ", node_id)
+            print("host's node_id = ", node_id)
 
             # 筛选这个node_id下的vul 
             vuls = None
             vuls = [vul for vul in self.vulnerabilities if vul[3] == node_id]
-            print("host - vuls = ", vuls)
-
+            print("host's vuls = ", vuls)
             # make vuls
             # ...
             if vuls:
@@ -452,8 +451,26 @@ class GUI:
                     if vulnerability:
                         vulnerabilities.append(vulnerability)
                 print(vulnerabilities)
-            # make gates
-            # ...
+            
+                # 筛选出这个node_id 下的gates
+                and_gates = None
+                and_gates = [and_gate for and_gate in self.andgates if and_gate[3] == node_id]
+                print("host's and_gates = ", and_gates)
+                or_gates = None
+                or_gates = [or_gate for or_gate in self.orgates if or_gate[4] == node_id]
+                print("host's or_gates = ", or_gates)
+                
+                # make gates
+                # ...
+                # 对每一个gate
+                # for and_gate in and_gates:
+                #     # and_gate = (x, y, and_gate_id, node_id)
+                #     # node = and_gate[3] 对应的vul
+                #     at_and_gate = hm.LogicGate(gatetype='and')
+
+                #     host.lower_layer.at_add_node(node, logic_gate=at_and_gate) #  def at_add_node(self, node, logic_gate=None)
+                # for or_gate in or_gates:
+                #     at_or_gate = hm.LogicGate(gatetype='or')
             
 
         # # then we will make a basic attack tree for each host
@@ -660,9 +677,10 @@ class GUI:
                 tags='and_gate_tag')
 
             node_id = self.nodes[self.active_node_index][2]
+            sub_vul = []
             
-            values = x, y, and_gate_id, node_id
-            self.andgate.append(values)
+            values = x, y, and_gate_id, node_id, sub_vul
+            self.andgates.append(values)
 
             print(f"add AND gate, id={and_gate_id}")
             print(f"info: {values}")
@@ -692,9 +710,10 @@ class GUI:
                 tags='or_gate_half_tag')
             
             node_id = self.nodes[self.active_node_index][2]
+            sub_vul = []
             
-            values = x, y, or_gate_id, or_gate_half_id, node_id
-            self.orgate.append(values)
+            values = x, y, or_gate_id, or_gate_half_id, node_id, sub_vul
+            self.orgates.append(values)
 
             print(f"add OR gate id={or_gate_id}+{or_gate_half_id}")
             print(f"info: {values}")
@@ -722,10 +741,42 @@ class GUI:
                     self.AG_arc_selected2 = []
 
                     node_id = self.nodes[self.active_node_index][2]
+                    # gate_lines
                     gate_line_values = gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id
                     self.gate_lines.append(gate_line_values)
-                    print(f"ARC-gate: {gate_line_values}")
                     print("Gate_lines: ", self.gate_lines)
+
+                    # self.andgates 添加 sub_vuls
+                    if element2_tag == "and_gate_tag":
+                        index = None
+                        for i, andgate in enumerate(self.andgates):
+                            if andgate[2] == element2_id:
+                                index = i
+                                break
+                        if index is not None:
+                            self.andgates[index][4].append(element1_id)
+                    elif element2_tag == "or_gate_tag":
+                        index = None
+                        for i, orgate in enumerate(self.orgates):
+                            if orgate[2] == element2_id:
+                                index = i
+                                break
+                        if index is not None:
+                            self.orgates[index][5].append(element1_id)
+                    elif element2_tag == "or_gate_half_tag":
+                        index = None
+                        for i, orgate in enumerate(self.orgates):
+                            if orgate[3] == element2_id:
+                                index = i
+                                break
+                        if index is not None:
+                            self.orgates[index][5].append(element1_id)
+                    else:
+                        print("WRONG gate line")
+                    print("- - Append gates - -")
+                    print(f"and gates: {self.andgates}")
+                    print(f"or gates: {self.orgates}")
+                    print("-- -- -- -- -- -- --")
 
     def draw_arc(self, id_1, id_2, tag_1, tag_2):
         # 获取元素中心坐标
@@ -785,9 +836,9 @@ class GUI:
                 and_id = closest_element_id[0]
             if and_id:
                 self.AT_canvas.delete(and_id)
-                self.andgate[:] = [andgate for andgate in self.andgate if andgate[2] != and_id]
+                self.andgates[:] = [andgate for andgate in self.andgates if andgate[2] != and_id]
                 print("delete AND ", and_id)
-                print("current and gates:", self.andgate)
+                print("current and gates:", self.andgates)
 
         # OR: 删除 OR gate
         elif self.mode == MODE_AT_OR:
@@ -806,9 +857,9 @@ class GUI:
                 if closest_or_half_id:
                     self.AT_canvas.delete(closest_or_half_id)
 
-                    self.orgate[:] = [orgate for orgate in self.orgate if orgate[2] != or_id]
+                    self.orgates[:] = [orgate for orgate in self.orgates if orgate[2] != or_id]
                     print("delete OR ", or_id, '+', or_half_id)
-                    print("current or gates:", self.orgate)
+                    print("current or gates:", self.orgates)
 
     def get_vulnerability_info(self, x, y):
         # 弹出新界面,获取vulnerability info
