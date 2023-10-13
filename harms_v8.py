@@ -483,7 +483,7 @@ class GUI:
                                 break
                         if vuls_index is not None:
                             host.lower_layer.at_add_node(at_vulnerabilities_list[vuls_index], logic_gate=at_and_gate_list[i]) #  def at_add_node(self, node, logic_gate=None)
-                            print(f"add sub_vul (id){element_id} to and gate")
+                            print(f"add sub_vul (id){element_id} to and gate (info){and_gate}")
                         else:
                             # 或者是哪个gate? element_id 对应哪个and_gate或or_gate
                             for y, element_and in enumerate(and_gates):
@@ -492,7 +492,7 @@ class GUI:
                                     break
                             if andgate_index is not None:
                                 host.lower_layer.at_add_node(at_and_gate_list[andgate_index], logic_gate=at_and_gate_list[i])
-                                print(f"add sub_and (id){element_id} to and gate")
+                                print(f"add sub_and (id){element_id} to and gate (info){and_gate}")
                             else:
                                 # 或者是哪个orgate
                                 for z, element_or in enumerate(or_gates):
@@ -501,9 +501,41 @@ class GUI:
                                         break
                                 if orgate_index is not None:
                                     host.lower_layer.at_add_node(at_or_gate_list[orgate_index], logic_gate=at_and_gate_list[i])
-                                    print(f"add sub_or (id){element_id} to and gate")
-                # for or_gate in or_gates:
-                #     at_or_gate = hm.LogicGate(gatetype='or')
+                                    print(f"add sub_or (id){element_id} to and gate (info){and_gate}")
+                                    
+                for i, or_gate in enumerate(or_gates):
+                    for element_id in or_gate[5]:
+                        vuls_index = None
+                        andgate_index = None
+                        orgate_index = None
+                        # element_id - vul ?
+                        for x, element_vul in enumerate(vuls):
+                            if element_id == element_vul[2]:
+                                vuls_index = x
+                                break
+                        if vuls_index is not None:
+                            host.lower_layer.at_add_node(at_vulnerabilities_list[vuls_index], logic_gate=at_or_gate_list[i])
+                            print(f"add sub_vul (id){element_id} to or gate (info){or_gate}")
+                        # and - gate ?
+                        else:
+                            for y, element_and in enumerate(and_gates):
+                                if element_id == element_and[2]:
+                                    andgate_index = y
+                                    break
+                            if andgate_index is not None:
+                                host.lower_layer.at_add_node(at_and_gate_list[andgate_index], logic_gate=at_or_gate_list[i])
+                                print(f"add sub_and (id){element_id} to or gate (info){or_gate}")
+                        # or - gate ?
+                            else:
+                                for z, element_or in enumerate(or_gates):
+                                    if element_id == element_or[2] or element_id == element_or[3]:
+                                        orgate_index = z
+                                        break
+                                if orgate_index is not None:
+                                    host.lower_layer.at_add_node(at_or_gate_list[orgate_index], logic_gate=at_or_gate_list[i])
+                                    print(f"add sub_or (id){element_id} to or gate (info){or_gate}")
+
+
             
 
         # # then we will make a basic attack tree for each host
