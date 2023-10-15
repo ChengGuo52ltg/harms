@@ -1,6 +1,12 @@
+# import re
 import tkinter as tk
 from tkinter import ttk, messagebox, Menu
 from tkinter import simpledialog
+from tkinter.scrolledtext import ScrolledText
+# import subprocess
+import io
+import contextlib
+
 
 import harmat as hm
 from requests import delete
@@ -37,7 +43,7 @@ class GUI:
         # self.client = None
         self.root = tk.Tk()
         self.root.title('Welcome to HARMs!')
-        self.root.geometry('700x450')
+        self.root.geometry('750x450')
 
         # Style setting
         self.style = ttk.Style(self.root)
@@ -80,11 +86,11 @@ class GUI:
         # Canvas 画布
         self.canvas = tk.Canvas(
             self.root,
-            width=550,
+            width=570,
             height=430,
             bg="white"
         )
-        self.canvas.place(x=140, y=10, anchor='nw')
+        self.canvas.place(x=170, y=10, anchor='nw')
 
         self.nodes = []  # 存储node信息，每个节点是一个元组 (x, y, id, label, name, name_id)
         self.lines = []  # 储存arc信息 (x, y, line_id, node1_id, node2_id)
@@ -116,11 +122,15 @@ class GUI:
 
 
         # Buttons
+        # icon_dot = tk.PhotoImage(file="/home/chelsea/cheng_test/harms/dot.png")
         self.btn_node = ttk.Button(
             self.root,
             text='Node',
             style='D.TButton',
-            command=self.mode_AG_node)
+            command=self.mode_AG_node
+            # image=icon_dot,
+            # compound=tk.TOP
+        )
         
         self.btn_arc = ttk.Button(
             self.root,
@@ -157,12 +167,13 @@ class GUI:
             command=self.AG_redo
         )
 
-        self.btn_node.place(x=20, y=40, anchor='nw')
-        self.btn_arc.place(x=20, y=100, anchor='nw')
-        self.btn_undo.place(x=20, y=180, anchor='nw')
-        self.btn_redo.place(x=20, y=240, anchor='nw')
-        self.btn_clear.place(x=20, y=310, anchor='nw')
-        self.btn_analysis.place(x=20, y=370, anchor='nw')
+        
+        self.btn_node.place(x=35, y=40, anchor='nw')
+        self.btn_arc.place(x=35, y=100, anchor='nw')
+        self.btn_undo.place(x=20, y=160, anchor='nw')
+        self.btn_redo.place(x=90, y=160, anchor='nw')
+        self.btn_clear.place(x=35, y=220, anchor='nw')
+        self.btn_analysis.place(x=35, y=370, anchor='nw')
 
 # --------------------------------------------------------------------------- Modes
     def mode_AG_node(self):
@@ -761,36 +772,48 @@ class GUI:
         h.flowup()
 
         # Now we will run some metrics
-        hm.HarmSummary(h).show()
+        # hm.HarmSummary(h).show()
+        summary = hm.HarmSummary(h)
+        summary.__init__(h)
+        summary.compute(h)
+        output_buffer = io.StringIO()
+        with contextlib.redirect_stdout(output_buffer):
+            summary.show()
+        # 获取输出结果
+        output_result = output_buffer.getvalue()
 
-        # result = hm.HarmSummary(h).show()
+        # 现在你可以访问 output_result 来获取打印的结果
+        print("hi:", output_result)
 
-        # popup = tk.Toplevel(self.root)
-        # popup.title("Pop-up Window")
+        
+        # # result = subprocess.check_output(["python3", "/home/chelsea/cheng_test/harms/gui_harms.py"], universal_newlines=True)
+        # result = subprocess.Popen(["python3", "/home/chelsea/cheng_test/harms/gui_harms.py"], stdout=subprocess.PIPE, universal_newlines=True)
+        # hm.HarmSummary(h).show()
+        # # 获取输出并等待进程完成
+        # output, _ = result.communicate()
+        # print("print!", result)
+        # print("print!", output)
 
-        # label = tk.Label(popup)
-        # label.pack(padx=20, pady=20)
+
+        popup = tk.Toplevel(self.root)
+        popup.title("Harm Summary Result")
+        popup.geometry('500x300')
+
+        # # label = tk.Label(popup)
+        # # label.pack(padx=20, pady=20)
 
         # # 创建一个多行文本输入框
         # text_input = tk.Text(popup, wrap=tk.WORD, width=60, height=30)
         # text_input.pack(padx=20, pady=20)
+        # 创建一个文本小部件来显示结果
+        result_text = ScrolledText(popup, wrap=tk.WORD)
+        result_text.pack(fill=tk.BOTH, expand=True)
+        if output_result is not None:
+            result_text.insert('1.0', output_result)  # 插入Harm Summary结果
+        result_text.configure(state='disabled')  # 禁用文本小部件以避免编辑
 
-        # long_text = """Metrics              Values\n
-        # -----------------------  ---------\n
-        # Number of hosts                             3\n
-        # Risk                                       20\n
-        # Cost                                        4\n
-        # Mean of attack path lengths                 1.5\n
-        # Mode of attack path lengths                 2\n
-        # Standard Deviation of attack path lengths   0.707107\n
-        # Shortest attack path length                 1\n
-        # Return on Attack                            5\n
-        # Density                                     0.5\n
-        # Probability of attack success               0.6"""
-        # text_input.insert(tk.END, long_text)
-
-        # close_button = tk.Button(popup, text="Close", command=popup.destroy)
-        # close_button.pack()
+        close_button = tk.Button(popup, text="Close", command=popup.destroy)
+        close_button.pack()
 
     # --------------------------------- Attack tree - Lower layer ----------
 
