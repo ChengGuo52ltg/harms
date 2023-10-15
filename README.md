@@ -11,6 +11,7 @@ vul_info = {"Name": name, "Risk": float(risk), "Probability": float(probability)
 
 self.lines = [(x, y, line_id, node1_id, node2_id)] 
 node1_id --> node2_id
+tags = "line"
 
 self.andgates = [(x, y, and_gate_id, node_id, sub_vuls={vul_id, vul_id, ...}, if_root), ()]
 

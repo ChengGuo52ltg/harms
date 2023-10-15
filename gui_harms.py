@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, Menu
 from tkinter import simpledialog
 
 import harmat as hm
+from requests import delete
 from tabulate import tabulate  # 需要安装tabulate库来格式化表格数据
 import statistics
 
@@ -33,7 +34,7 @@ GATE_NOT_ROOT = 0
 
 class GUI:
     def __init__(self):
-        self.client = None
+        # self.client = None
         self.root = tk.Tk()
         self.root.title('Welcome to HARMs!')
         self.root.geometry('700x450')
@@ -46,6 +47,10 @@ class GUI:
         self.style_default = ttk.Style(self.root)
         self.style_default.configure('D.TButton', background='white', padding=(5, 10))
         
+        # track history for undo and redo
+        self.history = []  # 用于存储撤销历史记录
+        self.history_redo = []
+
         # ---------------------------------
         self.mode = None
 
@@ -140,16 +145,16 @@ class GUI:
             self.root,
             text='Undo',
             style='D.TButton',
-            width=5
-            # command=self.AG_undo
+            width=5,
+            command=self.AG_undo
         )
 
         self.btn_redo = ttk.Button(
             self.root,
             text='Redo',
             style='D.TButton',
-            width=5
-            # command=self.AG_redo
+            width=5,
+            command=self.AG_redo
         )
 
         self.btn_node.place(x=20, y=40, anchor='nw')
@@ -264,56 +269,150 @@ class GUI:
             self.mode = MODE_NONE
             self.btn_AT_rootnode.config(style='D.TButton')
     # ---------------------------------------------------------------------------
+
+    def add_node(self, x, y):
+        # In attack graph, add host/node
+        node_id = self.canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill="light blue")
+        label = NODE_HOST
+        name = 'Host ' + str(len(self.nodes)+1)
+        # Add node's name
+        name_id = self.canvas.create_text(x, y + 20, text=name, fill="black", anchor="center",tags="name")
+        # Append the data list
+        self.nodes.append((x, y, node_id, label, name, name_id))
+        print("add node ", node_id, "info:(",x, y, node_id, label, name,")")
+
+        return 1
     
+    def remove_node(self, x, y):
+        closest_node = self.canvas.find_closest(x, y)
+        if closest_node:
+            node_id = closest_node[0]
+            nodes = [node for node in self.nodes if node[2] == node_id]
+            node = nodes[0]
+            name_id = node[5]
+            self.canvas.delete(node_id)
+            self.canvas.delete(name_id)
+
+            # 从self.nodes列表中删除了具有指定vul_id的元素
+            self.nodes[:] = [node for node in self.nodes if node[2] != node_id] 
+            print("delete node ", node_id)
+
+            return 1
+    
+    def ag_add_arc(self, x, y):
+        closest_node = self.canvas.find_closest(x, y)
+        if closest_node:
+            node_id = closest_node[0]
+            self.AG_arc_selected2.append(node_id)
+            print("select node for arc",node_id)
+            if len(self.AG_arc_selected2) == 2: # 选定了两个节点，绘制线条
+                node1_id, node2_id = self.AG_arc_selected2
+                line_id = self.draw_arrow_line(node1_id, node2_id)
+                # 储存line
+                values = x, y, line_id, node1_id, node2_id
+                self.lines.append(values)
+                print("print arc", line_id, "from", node1_id, "to", node2_id)
+                # 清空
+                self.AG_arc_selected2 = []
+
+                return 1
+            else:
+                return 0
+
+    # 绘制带箭头的直线
+    def draw_arrow_line(self, node1_id, node2_id):
+        # 获取节点1的圆心坐标
+        x1, y1 = self.get_node_center(node1_id)
+        # 获取节点2的圆心坐标
+        x2, y2 = self.get_node_center(node2_id)
+
+        # 调整起始点和结束点的坐标，分别向中心点靠近一定的距离
+        line_length = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+        shorten_distance = 20  # 设置要缩短的距离
+        if line_length > shorten_distance:
+            ratio = shorten_distance / line_length
+            x1_shortened = x1 + (x2 - x1) * ratio
+            y1_shortened = y1 + (y2 - y1) * ratio
+            x2_shortened = x2 - (x2 - x1) * ratio
+            y2_shortened = y2 - (y2 - y1) * ratio
+        else:
+            # 如果直线太短，不进行缩短
+            x1_shortened, y1_shortened = x1, y1
+            x2_shortened, y2_shortened = x2, y2
+
+        # 绘制直线
+        line_id = self.canvas.create_line(
+            x1_shortened, y1_shortened, x2_shortened, y2_shortened,
+            arrow=tk.LAST, width=2, fill="black", tags="line")
+        return line_id
+        # 可以存储线条的 ID 或其他信息，以便将来对线条进行管理或删除
+        # self.lines.append(line_id)
+
+    # 获取节点的圆心坐标
+    def get_node_center(self, node_id):
+        # 获取节点的坐标范围
+        x1, y1, x2, y2 = self.canvas.coords(node_id)
+        # 计算圆心坐标
+        x_center = (x1 + x2) / 2
+        y_center = (y1 + y2) / 2
+        return x_center, y_center
+    
+    def ag_remove_arc(self, x, y):
+        lines_id = self.canvas.find_withtag("line")
+
+        closest_line_id = None
+        closest_distance = float("inf")
+
+        # 计算最近的线条
+        for line_id in lines_id:
+            # 获取线条的坐标信息
+            x1, y1, x2, y2 = self.canvas.coords(line_id)
+            # 计算鼠标点击点到线条的距离
+            distance = ((x2 - x1) * (y1 - y) - (x1 - x) * (y2 - y1)) / ((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+            # 如果距离更近，则更新最近的线条和距离
+            if abs(distance) < closest_distance:
+                closest_line_id = line_id
+                closest_distance = abs(distance)
+
+        if closest_line_id is not None:
+            self.canvas.delete(closest_line_id)
+            self.lines[:] = [line for line in self.lines if line[2] != closest_line_id] 
+            print("delete arc", closest_line_id)
+
+            # # 添加到历史记录
+            # self.history_undo.append(("ag_remove_arc", x, y))
+            # # 清空重做历史记录
+            # self.history_redo = []
+        
     def AG_left_click(self, event):
         x, y = event.x, event.y
 
         if self.mode == MODE_AG_NODE:
             # NODE: 左键单击画布来添加节点，通过右键单击节点来删除它。节点以蓝色圆点的形式表示。
-            
-            node_id = self.canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill="light blue")
-            label = NODE_HOST
-            name = 'Host ' + str(len(self.nodes)+1)
-            
-            # 添加name
-            name_id = self.canvas.create_text(x, y + 20, text=name, fill="black", anchor="center",tags="name")
-            
-            self.nodes.append((x, y, node_id, label, name, name_id))
-            print("add node ", node_id, "info:(",x, y, node_id, label, name,")")
+            out = self.add_node(x, y)
+            if out == 1:
+                # Add the last node to history
+                self.history.append(("add_node", self.nodes[-1]))
 
         elif self.mode == MODE_AG_ARC:
             # ARC: 绘制线条 - 选中点
-            closest_node = self.canvas.find_closest(x, y)
-            if closest_node:
-                node_id = closest_node[0]
-                self.AG_arc_selected2.append(node_id)
-                print("select node for arc",node_id)
-                if len(self.AG_arc_selected2) == 2: # 选定了两个节点，绘制线条
-                    node1_id, node2_id = self.AG_arc_selected2
-                    line_id = self.draw_arrow_line(node1_id, node2_id)
-                    # 储存line
-                    values = x, y, line_id, node1_id, node2_id
-                    self.lines.append(values)
-                    print("print arc", line_id, "from", node1_id, "to", node2_id)
-                    # 清空
-                    self.AG_arc_selected2 = []
+            out = self.ag_add_arc(x, y)
+            if out == 1:
+                # Add the last node to history
+                self.history.append(("ag_add_arc", self.lines[-1]))
 
     def AG_right_click(self, event):
         x, y = event.x, event.y
 
         if self.mode == MODE_AG_NODE:
-            # NODE: 通过右键单击节点来删除节点
-            closest_node = self.canvas.find_closest(x, y)
-            if closest_node:
-                node_id = closest_node[0]
-                nodes = [node for node in self.nodes if node[2] == node_id]
-                node = nodes[0]
-                name_id = node[5]
-                self.canvas.delete(node_id)
-                self.canvas.delete(name_id)
-                # 从self.nodes列表中删除了具有指定vul_id的元素
-                self.nodes[:] = [node for node in self.nodes if node[2] != node_id] 
-                print("delete node ", node_id)
+            out = self.remove_node(x, y)
+            if out == 1:
+                # Add the last node to history
+                self.history.append(("remove_node", (x, y)))
+
+        elif self.mode == MODE_AG_ARC:
+            self.ag_remove_arc(x, y)
 
         elif self.mode == MODE_NONE:
             # NONE: 不在任何模式下，右键选中node弹出菜单
@@ -375,45 +474,6 @@ class GUI:
                 # 替换成新的name_id
                 self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:5], new_name_id)
                 print("rename: ", self.nodes[self.active_node_index])
-
-
-    # 绘制带箭头的直线
-    def draw_arrow_line(self, node1_id, node2_id):
-        # 获取节点1的圆心坐标
-        x1, y1 = self.get_node_center(node1_id)
-        # 获取节点2的圆心坐标
-        x2, y2 = self.get_node_center(node2_id)
-
-        # 调整起始点和结束点的坐标，分别向中心点靠近一定的距离
-        line_length = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
-        shorten_distance = 20  # 设置要缩短的距离
-        if line_length > shorten_distance:
-            ratio = shorten_distance / line_length
-            x1_shortened = x1 + (x2 - x1) * ratio
-            y1_shortened = y1 + (y2 - y1) * ratio
-            x2_shortened = x2 - (x2 - x1) * ratio
-            y2_shortened = y2 - (y2 - y1) * ratio
-        else:
-            # 如果直线太短，不进行缩短
-            x1_shortened, y1_shortened = x1, y1
-            x2_shortened, y2_shortened = x2, y2
-
-        # 绘制直线
-        line_id = self.canvas.create_line(
-            x1_shortened, y1_shortened, x2_shortened, y2_shortened,
-            arrow=tk.LAST, width=2, fill="black")
-        return line_id
-        # 可以存储线条的 ID 或其他信息，以便将来对线条进行管理或删除
-        # self.lines.append(line_id)
-
-    # 获取节点的圆心坐标
-    def get_node_center(self, node_id):
-        # 获取节点的坐标范围
-        x1, y1, x2, y2 = self.canvas.coords(node_id)
-        # 计算圆心坐标
-        x_center = (x1 + x2) / 2
-        y_center = (y1 + y2) / 2
-        return x_center, y_center
     
     def AG_clear(self):
         # Back to normal mode
@@ -432,11 +492,52 @@ class GUI:
         print("Clear")
     
     def AG_undo(self):
-        if self.mode == MODE_AG_NODE:
-            return
+        if self.history:
+            # 从历史记录中获取上一个操作
+            action, values = self.history.pop()
+            # 执行相应的撤销操作
+            if action == "add_node":
+                x = values[0]
+                y = values[1]
+                self.remove_node(x, y)
+                # node = values
+                # # Same as remove_node
+                # self.canvas.delete(node[2])
+                # self.canvas.delete(node[5])
+                # self.nodes[:] = [n for n in self.nodes if n[2] != node[2]]
+            elif action == "remove_node":
+                x, y = values
+                self.add_node(x, y)
+            elif action == "ag_add_arc":
+                x, y = values
+                self.ag_remove_arc(x, y)
+            #     self.ag_remove_arc(x, y)
+            # elif action == "ag_remove_arc":
+            #     self.ag_add_arc(x, y)
+
+            # Add action to "Redo"
+            self.history_redo.append((action, values))
     
     def AG_redo(self):
-        return
+        if self.history_redo:
+            # 从重做历史记录中获取下一个操作
+            action, values = self.history_redo.pop()
+            # 执行相应的重做操作
+            if action == "add_node":
+                # get x, y from values
+                x, y = values[:2]
+                self.add_node(x, y)
+            elif action == "remove_node":
+                x, y = values
+                self.remove_node(x, y)
+            # elif action == "ag_add_arc":
+            #     node1_id = values[3]
+            #     node2_id = values[4]
+            #     self.draw_arrow_line(node1_id, node2_id)
+            #     self.lines.append(values)
+            #     self.ag_add_arc(x, y)
+            # elif action == "ag_remove_arc":
+            #     self.ag_remove_arc(x, y)
     
     def AG_analysis(self):
         # initialise the harm
