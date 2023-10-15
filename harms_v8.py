@@ -14,16 +14,21 @@ MODE_AG_CLEAR = 3
 MODE_AG_ANALYSIS = 4
 MODE_AG_METRICS = 5
 
-MODE_AT_VUL = 3
-MODE_AT_ARC = 4
-MODE_AT_AND = 5
-MODE_AT_OR = 6
-MODE_AT_CLEAR = 7
+MODE_AT_VUL = 6
+MODE_AT_ARC = 7
+MODE_AT_AND = 8
+MODE_AT_OR = 9
+MODE_AT_CLEAR = 10
+MODE_AT_ROOTNODE = 11
 
 # Node - type
 NODE_HOST = 0
 NODE_ATTACKER = 1
 NODE_TARGET = 2
+
+# Gate if it is rootnode
+GATE_IS_ROOT = 1
+GATE_NOT_ROOT = 0
 
 class GUI:
     def __init__(self):
@@ -179,6 +184,7 @@ class GUI:
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
+            self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_vul.config(style='D.TButton')
@@ -192,6 +198,7 @@ class GUI:
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
+            self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_AND.config(style='D.TButton')
@@ -205,6 +212,7 @@ class GUI:
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
+            self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_OR.config(style='D.TButton')
@@ -218,6 +226,7 @@ class GUI:
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
+            self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_arc.config(style='D.TButton')
@@ -231,9 +240,24 @@ class GUI:
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
+            self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_clear.config(style='D.TButton')
+
+    def mode_AT_rootnode(self):
+        if self.mode != MODE_AT_ROOTNODE:
+            self.mode = MODE_AT_ROOTNODE
+            self.btn_AT_rootnode.config(style='A.TButton')
+            #
+            self.btn_AT_vul.config(style='D.TButton')
+            self.btn_AT_AND.config(style='D.TButton')
+            self.btn_AT_OR.config(style='D.TButton')
+            self.btn_AT_arc.config(style='D.TButton')
+            self.btn_AT_clear.config(style='D.TButton')
+        else:
+            self.mode = MODE_NONE
+            self.btn_AT_rootnode.config(style='D.TButton')
     # ---------------------------------------------------------------------------
     
     def AG_left_click(self, event):
@@ -459,6 +483,7 @@ class GUI:
                 or_gates = None
                 or_gates = [or_gate for or_gate in self.orgates if or_gate[4] == node_id]
                 print("host's or_gates = ", or_gates)
+
                 # make gates
                 # ...
                 # 对每一个gate
@@ -467,9 +492,16 @@ class GUI:
                 for and_gate in and_gates:
                     at_and_gate = hm.LogicGate(gatetype='and')
                     at_and_gate_list.append(at_and_gate)
-                for and_gate in and_gates:
+                    # ROOTNODE:
+                    # 如果gate是root 把logicGate连到rootnode: 直接用at_add_node
+                    if and_gate[5] == GATE_IS_ROOT:
+                        host.lower_layer.at_add_node(at_and_gate)
+
+                for or_gate in or_gates:
                     at_or_gate = hm.LogicGate(gatetype='or')
                     at_or_gate_list.append(at_or_gate)
+                    if or_gate[6] == GATE_IS_ROOT:
+                        host.lower_layer.at_add_node(at_or_gate)
 
                 for i, and_gate in enumerate(and_gates):
                     for element_id in and_gate[4]:
@@ -502,7 +534,7 @@ class GUI:
                                 if orgate_index is not None:
                                     host.lower_layer.at_add_node(at_or_gate_list[orgate_index], logic_gate=at_and_gate_list[i])
                                     print(f"add sub_or (id){element_id} to and gate (info){and_gate}")
-                                    
+                
                 for i, or_gate in enumerate(or_gates):
                     for element_id in or_gate[5]:
                         vuls_index = None
@@ -514,6 +546,11 @@ class GUI:
                                 vuls_index = x
                                 break
                         if vuls_index is not None:
+                            print(f"vuls_index={vuls_index}, i={i}")
+                            print(f"at_vulnerabilities_list={at_vulnerabilities_list}")
+                            print(at_vulnerabilities_list[vuls_index])
+                            print(f"at_or_gate_list={at_or_gate_list}")
+                            print(at_or_gate_list[i])
                             host.lower_layer.at_add_node(at_vulnerabilities_list[vuls_index], logic_gate=at_or_gate_list[i])
                             print(f"add sub_vul (id){element_id} to or gate (info){or_gate}")
                         # and - gate ?
@@ -535,99 +572,76 @@ class GUI:
                                     host.lower_layer.at_add_node(at_or_gate_list[orgate_index], logic_gate=at_or_gate_list[i])
                                     print(f"add sub_or (id){element_id} to or gate (info){or_gate}")
 
+        # Now we will create an Attacker. This is not a physical node but it exists to describe
+        # the potential entry points of attackers.
+        attacker = hm.Attacker() 
 
+        # To add edges we simply use the add_edge function
+        # here h[0] refers to the top layer
+        # add_edge(A,B) creates a uni-directional from A -> B.
+
+        # 默认host[0]是attacker
+        # 根据self.lines
+        for line in self.lines:
+            print("For arc:", line)
+
+            # 找出self.lines[3][4]对应的node_id - 起始、结束点
+            node_id_to_find_1 = line[3]
+            node_id_to_find_2 = line[4]
+            # if node_id_to_find == attacker_node_id
+            attacker_node_ids = [node[2] for node in self.nodes if node[3] == NODE_ATTACKER]
+            if len(attacker_node_ids) != 1:
+                print("more than 1 attacker")
+                return
+            else:
+                attacker_node_id = attacker_node_ids[0]
+                print("attacker_node_id = ", attacker_node_id)
+
+            index_1 = None
+            index_2 = None
+            try:
+                index_1 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_1)
+                print(f"The element with node_id {node_id_to_find_1} is at Host {index_1}")
+            except ValueError:
+                print(f"The node_id {node_id_to_find_1} was not found in self.nodes.")
+            try:
+                index_2 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_2)
+                print(f"The element with node_id {node_id_to_find_2} is at Host {index_2}")
+            except ValueError:
+                print(f"The node_id {node_id_to_find_2} was not found in self.nodes.")
             
+            if node_id_to_find_1 == attacker_node_id: # attacker(1) --> (2)
+                h[0].add_edge(attacker, hosts[index_2])
+                print(f"attacker --> host[{index_2}]")
+            elif node_id_to_find_2 == attacker_node_id: # (1) --> attacker(2)
+                print("wrong arc")
+                return
+            else:
+                # h[0].add_edge(...)
+                h[0].add_edge(hosts[index_1], hosts[index_2])
+                print(f"host[{index_1}] --> host[{index_2}]")
 
-        # # then we will make a basic attack tree for each host
-        # for host in hosts:
-        #     host.lower_layer = hm.AttackTree()
-        #     # We will make two vulnerabilities and give some metrics
-        #     vulnerability1 = hm.Vulnerability('CVE-0000', values = {
-        #         'risk' : 10,
-        #         'cost' : 4,
-        #         'probability' : 0.5,
-        #         'impact' : 12
-        #     })
-        #     vulnerability2 = hm.Vulnerability('CVE-0001', values = {
-        #         'risk' : 1,
-        #         'cost' : 5,
-        #         'probability' : 0.2,
-        #         'impact' : 2
-        #     })
-        #     # basic_at creates just one OR gate and puts all vulnerabilites
-        #     # the children nodes
-        #     host.lower_layer.basic_at([vulnerability1, vulnerability2])
-
-        # # Now we will create an Attacker. This is not a physical node but it exists to describe
-        # # the potential entry points of attackers.
-        # attacker = hm.Attacker() 
-
-        # # To add edges we simply use the add_edge function
-        # # here h[0] refers to the top layer
-        # # add_edge(A,B) creates a uni-directional from A -> B.
-
-        # # 默认host[0]是attacker
-        # # 根据self.lines
-        # for line in self.lines:
-        #     print("For arc:", line)
-
-        #     # 找出self.lines[3][4]对应的node_id - 起始、结束点
-        #     node_id_to_find_1 = line[3]
-        #     node_id_to_find_2 = line[4]
-        #     # if node_id_to_find == attacker_node_id
-        #     attacker_node_ids = [node[2] for node in self.nodes if node[3] == NODE_ATTACKER]
-        #     if len(attacker_node_ids) != 1:
-        #         print("more than 1 attacker")
-        #         return
-        #     else:
-        #         attacker_node_id = attacker_node_ids[0]
-        #         print("attacker_node_id = ", attacker_node_id)
-
-        #     index_1 = None
-        #     index_2 = None
-        #     try:
-        #         index_1 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_1)
-        #         print(f"The element with node_id {node_id_to_find_1} is at Host {index_1}")
-        #     except ValueError:
-        #         print(f"The node_id {node_id_to_find_1} was not found in self.nodes.")
-        #     try:
-        #         index_2 = [node[2] for node in self.nodes_withoutattacker].index(node_id_to_find_2)
-        #         print(f"The element with node_id {node_id_to_find_2} is at Host {index_2}")
-        #     except ValueError:
-        #         print(f"The node_id {node_id_to_find_2} was not found in self.nodes.")
-            
-        #     if node_id_to_find_1 == attacker_node_id: # attacker(1) --> (2)
-        #         h[0].add_edge(attacker, hosts[index_2])
-        #         print(f"attacker --> host[{index_2}]")
-        #     elif node_id_to_find_2 == attacker_node_id: # (1) --> attacker(2)
-        #         print("wrong arc")
-        #         return
-        #     else:
-        #         # h[0].add_edge(...)
-        #         h[0].add_edge(hosts[index_1], hosts[index_2])
-        #         print(f"host[{index_1}] --> host[{index_2}]")
-
-        # # Now we set the attacker and target
-        # h[0].source = attacker
-        # # 找出哪个是target
+        # Now we set the attacker and target
+        h[0].source = attacker
+        # 找出哪个是target
         
-        # target_index = None
-        # for i, node in enumerate(self.nodes_withoutattacker):
-        #     if node[3] == NODE_TARGET:
-        #         target_index = i
-        #         break
-        # if target_index is not None:
-        #     print(f"target is Host [{target_index}]")
-        #     h[0].target = hosts[target_index]
-        # else:
-        #     print("no target setted")
-        #     return
+        target_index = None
+        for i, node in enumerate(self.nodes_withoutattacker):
+            if node[3] == NODE_TARGET:
+                target_index = i
+                break
+        if target_index is not None:
+            print(f"target is Host [{target_index}]")
+            h[0].target = hosts[target_index]
+        else:
+            print("no target setted")
+            return
 
-        # # do some flow up
-        # h.flowup()
+        # do some flow up
+        h.flowup()
 
-        # # Now we will run some metrics
-        # hm.HarmSummary(h).show()
+        # Now we will run some metrics
+        hm.HarmSummary(h).show()
 
         # result = hm.HarmSummary(h).show()
 
@@ -698,12 +712,20 @@ class GUI:
                 style='D.TButton',
                 command=self.mode_AT_clear
             )
+
+            self.btn_AT_rootnode = ttk.Button(
+                AT_window,
+                text='Rootnode',
+                style='D.TButton',
+                command=self.mode_AT_rootnode
+            )
             
             self.btn_AT_vul.place(x=20, y=40, anchor='nw')
             self.btn_AT_arc.place(x=20, y=100, anchor='nw')
             self.btn_AT_AND.place(x=20, y=160, anchor='nw')
             self.btn_AT_OR.place(x=20, y=220, anchor='nw')
-            self.btn_AT_clear.place(x=20, y=280, anchor='nw')
+            self.btn_AT_rootnode.place(x=20, y=280, anchor='nw')
+            self.btn_AT_clear.place(x=20, y=340, anchor='nw')
 
             # Canvas 画布
             self.AT_canvas = tk.Canvas(
@@ -716,6 +738,10 @@ class GUI:
         
             self.AT_canvas.bind("<Button-1>", self.AT_left_click)
             self.AT_canvas.bind("<Button-3>", self.AT_right_click)
+
+            # # 创建右键菜单
+            # self.AT_gate_menu = Menu(AT_window, tearoff=0)
+            # self.AT_gate_menu.add_command(label="Set as root", command=self.set_root)
 
     # --------------------------------------------------------------
     def AT_left_click(self, event):
@@ -743,8 +769,9 @@ class GUI:
 
             node_id = self.nodes[self.active_node_index][2]
             sub_vul = []
+            if_root = GATE_NOT_ROOT
             
-            values = x, y, and_gate_id, node_id, sub_vul
+            values = x, y, and_gate_id, node_id, sub_vul, if_root
             self.andgates.append(values)
 
             print(f"add AND gate, id={and_gate_id}")
@@ -776,8 +803,9 @@ class GUI:
             
             node_id = self.nodes[self.active_node_index][2]
             sub_vul = []
+            if_root = GATE_NOT_ROOT
             
-            values = x, y, or_gate_id, or_gate_half_id, node_id, sub_vul
+            values = x, y, or_gate_id, or_gate_half_id, node_id, sub_vul, if_root
             self.orgates.append(values)
 
             print(f"add OR gate id={or_gate_id}+{or_gate_half_id}")
@@ -842,6 +870,31 @@ class GUI:
                     print(f"and gates: {self.andgates}")
                     print(f"or gates: {self.orgates}")
                     print("-- -- -- -- -- -- --")
+
+        elif self.mode == MODE_AT_ROOTNODE:
+            closest_element_id = None
+            closest_element_tags = None
+            closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
+            closest_element_tags = self.AT_canvas.gettags(closest_element_id)
+            if closest_element_id:
+                element_id = closest_element_id[0]
+                element_tag = closest_element_tags[0]
+                if element_tag in "and_gate_tag":
+                    # Find the gate
+                    for index, andgate in enumerate(self.andgates):
+                        if andgate[2] == element_id:
+                            self.andgates[index] = (*self.andgates[index][:5], GATE_IS_ROOT)
+                             # set if root
+                            print("set the gate to root (info)", self.andgates[index])
+                            break
+                elif element_tag in "or_gate_tag" or element_tag in "or_gate_half_tag":
+                    for index, orgate in enumerate(self.orgates):
+                        if orgate[2] == element_id or orgate[3] == element_id:
+                            self.orgates[index] = (*self.orgates[index][:6], GATE_IS_ROOT)
+                            print("set the gate to root (info)", self.orgates[index])
+                            break
+        
+        
 
     def draw_arc(self, id_1, id_2, tag_1, tag_2):
         # 获取元素中心坐标
@@ -926,6 +979,26 @@ class GUI:
                     print("delete OR ", or_id, '+', or_half_id)
                     print("current or gates:", self.orgates)
 
+        # elif self.mode == MODE_NONE:
+        #     # 右键弹出菜单
+        #     closest_elemnt = self.canvas.find_closest(x, y)
+        #     if closest_elemnt:
+        #         element_id = closest_elemnt[0]
+        #         # 检查这个是and gate还是or gate
+        #         print("right click - element id:", element_id)
+        #         for x, and_gate in enumerate(self.andgates):
+        #             if and_gate[2] == element_id:
+        #                 # 关联到and gate
+        #                 self.active_andgate_index = x
+        #                 self.AT_gate_menu.post(event.x_root, event.y_root)
+        #                 print(f"show menu of and gate (info){and_gate}")
+
+        #         for y, or_gate in enumerate(self.orgates):
+        #             if or_gate[2] == element_id or or_gate[3] == element_id:
+        #                 self.active_orgate_index = y
+        #                 self.AT_gate_menu.post(event.x_root, event.y_root)
+        #                 print(f"show menu of or gate (info){or_gate}")
+                
     def get_vulnerability_info(self, x, y):
         # 弹出新界面,获取vulnerability info
         global vul_info_window
@@ -1009,12 +1082,20 @@ class GUI:
         self.vulnerabilities.append(values)
         print("vul save end:", vul_info)
         print(self.vulnerabilities)
-
     
     def vul_cancel(self):
         # 关闭窗口，不显示vul
         print(self.vulnerabilities)
         vul_info_window.destroy()
+
+    # ------------------
+    # def set_root(self):
+    #     if hasattr(self, "active_andgate_index"):
+    #         self.andgates[self.active_andgate_index] = (*self.andgates[self.active_andgate_index][:5], GATE_IS_ROOT)
+    #         print(f"set as root (info){self.andgates[self.active_andgate_index]}")
+    #     elif hasattr(self, "active_orgate_index"):
+    #         self.orgates[self.active_orgate_index] = (*self.orgates[self.active_orgate_index][:6], GATE_IS_ROOT)
+    #         print(f"set as root (info){self.orgates[self.active_orgate_index]}")
 
     def run(self):
         self.root.mainloop()
