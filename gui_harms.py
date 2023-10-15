@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, Menu
 from tkinter import simpledialog
+
 import harmat as hm
 from tabulate import tabulate  # 需要安装tabulate库来格式化表格数据
 import statistics
@@ -134,19 +135,29 @@ class GUI:
             style='D.TButton',
             command=self.AG_analysis
         )
-        
-        self.btn_metrics = ttk.Button(
+
+        self.btn_undo = ttk.Button(
             self.root,
-            text='Metrics',
+            text='Undo',
             style='D.TButton',
-            command=self.AG_metrics
+            width=5
+            # command=self.AG_undo
         )
-        
+
+        self.btn_redo = ttk.Button(
+            self.root,
+            text='Redo',
+            style='D.TButton',
+            width=5
+            # command=self.AG_redo
+        )
+
         self.btn_node.place(x=20, y=40, anchor='nw')
         self.btn_arc.place(x=20, y=100, anchor='nw')
-        self.btn_clear.place(x=20, y=160, anchor='nw')
-        self.btn_analysis.place(x=20, y=260, anchor='nw')
-        self.btn_metrics.place(x=20, y=320, anchor='nw')
+        self.btn_undo.place(x=20, y=180, anchor='nw')
+        self.btn_redo.place(x=20, y=240, anchor='nw')
+        self.btn_clear.place(x=20, y=310, anchor='nw')
+        self.btn_analysis.place(x=20, y=370, anchor='nw')
 
 # --------------------------------------------------------------------------- Modes
     def mode_AG_node(self):
@@ -155,9 +166,6 @@ class GUI:
             self.btn_node.config(style='A.TButton')
             # 其他按钮恢复
             self.btn_arc.config(style='D.TButton')
-            self.btn_clear.config(style='D.TButton')
-            self.btn_analysis.config(style='D.TButton')
-            self.btn_metrics.config(style='D.TButton')
         else: # 再按一次 取消node模式
             self.mode = MODE_NONE
             self.btn_node.config(style='D.TButton')
@@ -168,9 +176,6 @@ class GUI:
             self.btn_arc.config(style='A.TButton')
             # 其他按钮恢复
             self.btn_node.config(style='D.TButton')
-            self.btn_clear.config(style='D.TButton')
-            self.btn_analysis.config(style='D.TButton')
-            self.btn_metrics.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_arc.config(style='D.TButton')
@@ -360,15 +365,16 @@ class GUI:
         if hasattr(self, "active_node_index"):
             # 属性,name设置
             new_name = simpledialog.askstring("Rename", "Enter a new name:")
-            self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:3], NODE_HOST, new_name, *self.nodes[self.active_node_index][5:])
-            # 删除原来的name_id, update text
-            self.canvas.delete(self.nodes[self.active_node_index][5]) # 删除text
-            x = self.nodes[self.active_node_index][0]
-            y = self.nodes[self.active_node_index][1]
-            new_name_id = self.canvas.create_text(x, y + 20, text=new_name, fill="black", anchor="center")
-            # 替换成新的name_id
-            self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:5], new_name_id)
-            print("rename: ", self.nodes[self.active_node_index])
+            if new_name is not None:
+                self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:3], NODE_HOST, new_name, *self.nodes[self.active_node_index][5:])
+                # 删除原来的name_id, update text
+                self.canvas.delete(self.nodes[self.active_node_index][5]) # 删除text
+                x = self.nodes[self.active_node_index][0]
+                y = self.nodes[self.active_node_index][1]
+                new_name_id = self.canvas.create_text(x, y + 20, text=str(new_name), fill="black", anchor="center")
+                # 替换成新的name_id
+                self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:5], new_name_id)
+                print("rename: ", self.nodes[self.active_node_index])
 
 
     # 绘制带箭头的直线
@@ -410,16 +416,26 @@ class GUI:
         return x_center, y_center
     
     def AG_clear(self):
-        # 恢复界面/模式
+        # Back to normal mode
         self.mode = MODE_NONE
+        # Clear button state
         self.btn_node.config(style='D.TButton')
         self.btn_arc.config(style='D.TButton')
-        # 清除数据
+        # Clear data
         self.canvas.delete("all")
         self.nodes = []
-        print("clear. now nodes list: ", self.nodes)
+        self.vulnerabilities = []
+        self.lines = []
+        self.andgates = []
+        self.orgates = []
+        self.gate_lines = []
+        print("Clear")
     
-    def AG_metrics(self):
+    def AG_undo(self):
+        if self.mode == MODE_AG_NODE:
+            return
+    
+    def AG_redo(self):
         return
     
     def AG_analysis(self):
@@ -611,18 +627,18 @@ class GUI:
                 print(f"The node_id {node_id_to_find_2} was not found in self.nodes.")
             
             if node_id_to_find_1 == attacker_node_id: # attacker(1) --> (2)
-                h[0].add_edge(attacker, hosts[index_2])
+                h[0].add_edge(attacker, hosts[index_2]) # type: ignore
                 print(f"attacker --> host[{index_2}]")
             elif node_id_to_find_2 == attacker_node_id: # (1) --> attacker(2)
                 print("wrong arc")
                 return
             else:
                 # h[0].add_edge(...)
-                h[0].add_edge(hosts[index_1], hosts[index_2])
+                h[0].add_edge(hosts[index_1], hosts[index_2]) # type: ignore
                 print(f"host[{index_1}] --> host[{index_2}]")
 
         # Now we set the attacker and target
-        h[0].source = attacker
+        h[0].source = attacker # type: ignore
         # 找出哪个是target
         
         target_index = None
@@ -632,7 +648,7 @@ class GUI:
                 break
         if target_index is not None:
             print(f"target is Host [{target_index}]")
-            h[0].target = hosts[target_index]
+            h[0].target = hosts[target_index] # type: ignore
         else:
             print("no target setted")
             return
@@ -815,12 +831,12 @@ class GUI:
         elif self.mode == MODE_AT_ARC:
             # 1.最近的元素
             closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
-            closest_element_tags = self.AT_canvas.gettags(closest_element_id)
             if closest_element_id:
-                element1_id = closest_element_id[0]
+                element_id = closest_element_id[0]
+                closest_element_tags = self.AT_canvas.gettags(element_id)
                 element_tags = closest_element_tags[0]
                 # 2.保存进 AG_arc_selected2，保存id和tag
-                values = element1_id, element_tags
+                values = element_id, element_tags
                 self.AG_arc_selected2.append(values)
                 print("select element", values)
                 # 3.满了两个 (必须是 vul->门,或者 门->门)
@@ -875,9 +891,9 @@ class GUI:
             closest_element_id = None
             closest_element_tags = None
             closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
-            closest_element_tags = self.AT_canvas.gettags(closest_element_id)
             if closest_element_id:
                 element_id = closest_element_id[0]
+                closest_element_tags = self.AT_canvas.gettags(element_id)
                 element_tag = closest_element_tags[0]
                 if element_tag in "and_gate_tag":
                     # Find the gate
@@ -893,8 +909,6 @@ class GUI:
                             self.orgates[index] = (*self.orgates[index][:6], GATE_IS_ROOT)
                             print("set the gate to root (info)", self.orgates[index])
                             break
-        
-        
 
     def draw_arc(self, id_1, id_2, tag_1, tag_2):
         # 获取元素中心坐标
@@ -937,7 +951,7 @@ class GUI:
         if self.mode == MODE_AT_VUL:
             vul_id = 0
             closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
-            element_tags = self.AT_canvas.gettags(closest_element_id)
+            element_tags = self.AT_canvas.gettags(closest_element_id[0])
             if "vul_tag" in element_tags:
                 vul_id = closest_element_id[0]
             if vul_id:
@@ -949,7 +963,7 @@ class GUI:
         elif self.mode == MODE_AT_AND:
             and_id = 0
             closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
-            element_tags = self.AT_canvas.gettags(closest_element_id)
+            element_tags = self.AT_canvas.gettags(closest_element_id[0])
             if "and_gate_tag" in element_tags:
                 and_id = closest_element_id[0]
             if and_id:
@@ -963,41 +977,23 @@ class GUI:
             or_id = 0
             closest_or_half_id = 0
             closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
-            element_tags = self.AT_canvas.gettags(closest_element_id)
+            element_tags = self.AT_canvas.gettags(closest_element_id[0])
             if "or_gate_tag" in element_tags:
                 or_id = closest_element_id[0]
             if or_id:
                 self.AT_canvas.delete(or_id)
                 closest_or_half_id = self.AT_canvas.find_closest(x, y) # 最近的or gate half
-                closest_or_half_tags = self.AT_canvas.gettags(closest_or_half_id)
+                closest_or_half_tags = self.AT_canvas.gettags(closest_or_half_id[0])
+                
+                or_half_id = None
                 if "or_gate_half_tag" in closest_or_half_tags:
-                    or_half_id = closest_or_half_id
-                if closest_or_half_id:
-                    self.AT_canvas.delete(closest_or_half_id)
+                    or_half_id = closest_or_half_id[0]
+                if or_half_id:
+                    self.AT_canvas.delete(str(or_half_id))
 
                     self.orgates[:] = [orgate for orgate in self.orgates if orgate[2] != or_id]
                     print("delete OR ", or_id, '+', or_half_id)
                     print("current or gates:", self.orgates)
-
-        # elif self.mode == MODE_NONE:
-        #     # 右键弹出菜单
-        #     closest_elemnt = self.canvas.find_closest(x, y)
-        #     if closest_elemnt:
-        #         element_id = closest_elemnt[0]
-        #         # 检查这个是and gate还是or gate
-        #         print("right click - element id:", element_id)
-        #         for x, and_gate in enumerate(self.andgates):
-        #             if and_gate[2] == element_id:
-        #                 # 关联到and gate
-        #                 self.active_andgate_index = x
-        #                 self.AT_gate_menu.post(event.x_root, event.y_root)
-        #                 print(f"show menu of and gate (info){and_gate}")
-
-        #         for y, or_gate in enumerate(self.orgates):
-        #             if or_gate[2] == element_id or or_gate[3] == element_id:
-        #                 self.active_orgate_index = y
-        #                 self.AT_gate_menu.post(event.x_root, event.y_root)
-        #                 print(f"show menu of or gate (info){or_gate}")
                 
     def get_vulnerability_info(self, x, y):
         # 弹出新界面,获取vulnerability info
@@ -1069,14 +1065,16 @@ class GUI:
         vul_info = {"Name": name, "Risk": risk, "Probability": prob, "Cost": cost, "Impact": impt}
         
         vul_info_window.destroy()
-        # vul_info = {"Name": name, "Risk": float(risk), "Probability": float(prob), "Cost": float(cost), "Impact": float(impt)}
+        
+        vul_id = None
+        node_id = None
         if vul_info:
-                text = vul_info["Name"] # 创建文本
-                vul_id = self.AT_canvas.create_text(
-                    x, y, text=text, 
-                    font=("Arial", 12), anchor="nw",
-                    tags="vul_tag")
-                node_id = self.nodes[self.active_node_index][2]
+            text = vul_info["Name"] # 创建文本
+            vul_id = self.AT_canvas.create_text(
+                x, y, text=text, 
+                font=("Arial", 12), anchor="nw",
+                tags="vul_tag")
+            node_id = self.nodes[self.active_node_index][2]
 
         values = x, y, vul_id, node_id, vul_info # 存进列表
         self.vulnerabilities.append(values)
@@ -1087,15 +1085,6 @@ class GUI:
         # 关闭窗口，不显示vul
         print(self.vulnerabilities)
         vul_info_window.destroy()
-
-    # ------------------
-    # def set_root(self):
-    #     if hasattr(self, "active_andgate_index"):
-    #         self.andgates[self.active_andgate_index] = (*self.andgates[self.active_andgate_index][:5], GATE_IS_ROOT)
-    #         print(f"set as root (info){self.andgates[self.active_andgate_index]}")
-    #     elif hasattr(self, "active_orgate_index"):
-    #         self.orgates[self.active_orgate_index] = (*self.orgates[self.active_orgate_index][:6], GATE_IS_ROOT)
-    #         print(f"set as root (info){self.orgates[self.active_orgate_index]}")
 
     def run(self):
         self.root.mainloop()
