@@ -377,13 +377,14 @@ class GUI:
 
         if closest_line_id is not None:
             self.canvas.delete(closest_line_id)
+
+            # Save to history
+            values = [line for line in self.lines if line[2] == closest_line_id]
+            self.history.append(("ag_remove_arc", values))
+
             self.lines[:] = [line for line in self.lines if line[2] != closest_line_id] 
             print("delete arc", closest_line_id)
-
-            # # 添加到历史记录
-            # self.history_undo.append(("ag_remove_arc", x, y))
-            # # 清空重做历史记录
-            # self.history_redo = []
+            
         
     def AG_left_click(self, event):
         x, y = event.x, event.y
@@ -500,20 +501,20 @@ class GUI:
                 x = values[0]
                 y = values[1]
                 self.remove_node(x, y)
-                # node = values
-                # # Same as remove_node
-                # self.canvas.delete(node[2])
-                # self.canvas.delete(node[5])
-                # self.nodes[:] = [n for n in self.nodes if n[2] != node[2]]
             elif action == "remove_node":
                 x, y = values
                 self.add_node(x, y)
             elif action == "ag_add_arc":
-                x, y = values
+                x = values[0]
+                y = values[1]
                 self.ag_remove_arc(x, y)
-            #     self.ag_remove_arc(x, y)
-            # elif action == "ag_remove_arc":
-            #     self.ag_add_arc(x, y)
+            elif action == "ag_remove_arc":
+                node1_id = values[3]
+                node2_id = values[4]
+                # same to add_arc
+                self.draw_arrow_line(node1_id, node2_id)
+                self.lines.append(values)
+                print("print arc", values)
 
             # Add action to "Redo"
             self.history_redo.append((action, values))
@@ -530,14 +531,16 @@ class GUI:
             elif action == "remove_node":
                 x, y = values
                 self.remove_node(x, y)
-            # elif action == "ag_add_arc":
-            #     node1_id = values[3]
-            #     node2_id = values[4]
-            #     self.draw_arrow_line(node1_id, node2_id)
-            #     self.lines.append(values)
-            #     self.ag_add_arc(x, y)
-            # elif action == "ag_remove_arc":
-            #     self.ag_remove_arc(x, y)
+            elif action == "ag_add_arc":
+                node1_id = values[3]
+                node2_id = values[4]
+                self.draw_arrow_line(node1_id, node2_id)
+                self.lines.append(values)
+                print("print arc", values)
+            elif action == "ag_remove_arc":
+                x = values[0]
+                y = values[1]
+                self.ag_remove_arc(x, y)
     
     def AG_analysis(self):
         # initialise the harm
