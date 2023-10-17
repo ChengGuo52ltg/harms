@@ -1,4 +1,3 @@
-# import re
 import tkinter as tk
 from tkinter import ttk, messagebox, Menu
 from tkinter import simpledialog
@@ -37,6 +36,8 @@ NODE_TARGET = 2
 # Gate if it is rootnode
 GATE_IS_ROOT = 1
 GATE_NOT_ROOT = 0
+VUL_IS_ROOT = 1
+VUL_NOT_ROOT = 0
 
 class GUI:
     def __init__(self):
@@ -114,12 +115,10 @@ class GUI:
 
         # ATTACK TREE:
         self.vulnerabilities = []  # 用于存储漏洞信息的列表 
-        # [x, y, vul_id, 属于的node_id, input_info]
-        # each -> ["Name","Risk","Probability","Cost","Impact"]
         self.andgates = [] # 储存 [x, y, and_gate_id, node_id, sub_vuls={vul_id, vul_id, ...}]
         self.orgates = [] # 储存 [x, y, or_gate_id, or_gate_half_id, node_id, sub_vuls={vul_id, vul_id, ...}]
-        self.gate_lines = [] # [gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id]
-
+        self.at_lines = [] # [gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id]
+        self.roots = []
 
         # Buttons
         # icon_dot = tk.PhotoImage(file="/home/chelsea/cheng_test/harms/dot.png")
@@ -205,7 +204,7 @@ class GUI:
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            self.btn_AT_rootnode.config(style='D.TButton')
+            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_vul.config(style='D.TButton')
@@ -219,7 +218,7 @@ class GUI:
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            self.btn_AT_rootnode.config(style='D.TButton')
+            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_AND.config(style='D.TButton')
@@ -233,7 +232,7 @@ class GUI:
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            self.btn_AT_rootnode.config(style='D.TButton')
+            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_OR.config(style='D.TButton')
@@ -247,7 +246,7 @@ class GUI:
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            self.btn_AT_rootnode.config(style='D.TButton')
+            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_arc.config(style='D.TButton')
@@ -261,24 +260,24 @@ class GUI:
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
-            self.btn_AT_rootnode.config(style='D.TButton')
+            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_clear.config(style='D.TButton')
 
-    def mode_AT_rootnode(self):
-        if self.mode != MODE_AT_ROOTNODE:
-            self.mode = MODE_AT_ROOTNODE
-            self.btn_AT_rootnode.config(style='A.TButton')
-            #
-            self.btn_AT_vul.config(style='D.TButton')
-            self.btn_AT_AND.config(style='D.TButton')
-            self.btn_AT_OR.config(style='D.TButton')
-            self.btn_AT_arc.config(style='D.TButton')
-            self.btn_AT_clear.config(style='D.TButton')
-        else:
-            self.mode = MODE_NONE
-            self.btn_AT_rootnode.config(style='D.TButton')
+    # def mode_AT_rootnode(self):
+    #     if self.mode != MODE_AT_ROOTNODE:
+    #         self.mode = MODE_AT_ROOTNODE
+    #         # self.btn_AT_rootnode.config(style='A.TButton')
+    #         #
+    #         self.btn_AT_vul.config(style='D.TButton')
+    #         self.btn_AT_AND.config(style='D.TButton')
+    #         self.btn_AT_OR.config(style='D.TButton')
+    #         self.btn_AT_arc.config(style='D.TButton')
+    #         self.btn_AT_clear.config(style='D.TButton')
+    #     else:
+    #         self.mode = MODE_NONE
+            # self.btn_AT_rootnode.config(style='D.TButton')
     # ---------------------------------------------------------------------------
 
     def add_node(self, x, y):
@@ -500,7 +499,8 @@ class GUI:
         self.lines = []
         self.andgates = []
         self.orgates = []
-        self.gate_lines = []
+        self.at_lines = []
+        self.roots = []
         print("Clear")
     
     def AG_undo(self):
@@ -575,9 +575,7 @@ class GUI:
         # 5. flowup()
         # 6. report analysis
 
-        # for vul in self.vulnerabilities:
-            # node_id = vul[3]
-        print("all vuls: ",self.vulnerabilities)
+        print("all vuls: ", self.vulnerabilities)
 
         for index, host in enumerate(hosts):
             host.lower_layer = hm.AttackTree()
@@ -597,14 +595,19 @@ class GUI:
                 at_vulnerabilities_list = []
                 for vul in vuls:
                     vulnerability = None
-                    vulnerability = hm.Vulnerability(vul[4]["Name"], values = {
-                    'risk' : vul[4]["Risk"],
-                    'cost' : vul[4]["Probability"],
-                    'probability' : vul[4]["Cost"],
-                    'impact' : vul[4]["Impact"]
+                    vul_value = vul[4]
+                    print("vul_value = ", vul_value)
+                    vulnerability = hm.Vulnerability(vul_value["Name"], values = {
+                    'risk' : vul_value["Risk"],
+                    'cost' : vul_value["Cost"],
+                    'probability' : vul_value["Probability"],
+                    'impact' : vul_value["Impact"]
                     })
                     if vulnerability:
                         at_vulnerabilities_list.append(vulnerability)
+                    # check ROOT
+                    if vul[5] == GATE_IS_ROOT:
+                        host.lower_layer.at_add_node(vulnerability)
                 print(at_vulnerabilities_list)
             
                 # 筛选出这个node_id 下的gates
@@ -785,26 +788,10 @@ class GUI:
         # 现在你可以访问 output_result 来获取打印的结果
         print("hi:", output_result)
 
-        
-        # # result = subprocess.check_output(["python3", "/home/chelsea/cheng_test/harms/gui_harms.py"], universal_newlines=True)
-        # result = subprocess.Popen(["python3", "/home/chelsea/cheng_test/harms/gui_harms.py"], stdout=subprocess.PIPE, universal_newlines=True)
-        # hm.HarmSummary(h).show()
-        # # 获取输出并等待进程完成
-        # output, _ = result.communicate()
-        # print("print!", result)
-        # print("print!", output)
-
-
         popup = tk.Toplevel(self.root)
         popup.title("Harm Summary Result")
         popup.geometry('500x300')
 
-        # # label = tk.Label(popup)
-        # # label.pack(padx=20, pady=20)
-
-        # # 创建一个多行文本输入框
-        # text_input = tk.Text(popup, wrap=tk.WORD, width=60, height=30)
-        # text_input.pack(padx=20, pady=20)
         # 创建一个文本小部件来显示结果
         result_text = ScrolledText(popup, wrap=tk.WORD)
         result_text.pack(fill=tk.BOTH, expand=True)
@@ -821,7 +808,9 @@ class GUI:
         if hasattr(self, "active_node_index"):
             global AT_window
             AT_window = tk.Toplevel(self.root)
-            AT_window.title("Attack Tree of " + str(self.nodes[self.active_node_index][4]))
+            title_text = str(self.nodes[self.active_node_index][4])
+            node_id = self.nodes[self.active_node_index][2]
+            AT_window.title("Attack Tree of " + title_text)
             AT_window.geometry('700x450')
 
             # Buttons
@@ -856,18 +845,25 @@ class GUI:
                 command=self.mode_AT_clear
             )
 
-            self.btn_AT_rootnode = ttk.Button(
+            # self.btn_AT_rootnode = ttk.Button(
+            #     AT_window,
+            #     text='Rootnode',
+            #     style='D.TButton',
+            #     command=self.mode_AT_rootnode
+            # )
+            self.btn_AT_save = ttk.Button(
                 AT_window,
-                text='Rootnode',
+                text='Save',
                 style='D.TButton',
-                command=self.mode_AT_rootnode
+                command=self.at_save
             )
             
             self.btn_AT_vul.place(x=20, y=40, anchor='nw')
             self.btn_AT_arc.place(x=20, y=100, anchor='nw')
             self.btn_AT_AND.place(x=20, y=160, anchor='nw')
             self.btn_AT_OR.place(x=20, y=220, anchor='nw')
-            self.btn_AT_rootnode.place(x=20, y=280, anchor='nw')
+            self.btn_AT_save.place(x=20, y=280, anchor='nw')
+            # self.btn_AT_rootnode.place(x=20, y=280, anchor='nw')
             self.btn_AT_clear.place(x=20, y=340, anchor='nw')
 
             # Canvas 画布
@@ -882,10 +878,12 @@ class GUI:
             self.AT_canvas.bind("<Button-1>", self.AT_left_click)
             self.AT_canvas.bind("<Button-3>", self.AT_right_click)
 
-            # # 创建右键菜单
-            # self.AT_gate_menu = Menu(AT_window, tearoff=0)
-            # self.AT_gate_menu.add_command(label="Set as root", command=self.set_root)
-
+            # 自动创建一个ROOTNODE
+            x = 280
+            y = 30
+            root_id = self.AT_canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill="light blue", tags='root_tag')
+            root_label_id = self.AT_canvas.create_text(x, y + 20, text="ROOT: " + title_text, fill="black", anchor="center")
+            self.roots.append((x, y, root_id, node_id))
     # --------------------------------------------------------------
     def AT_left_click(self, event):
         x, y = event.x, event.y
@@ -973,16 +971,16 @@ class GUI:
                     print("draw between", element1_id, element2_id)
                     # if 'vul_tag' not in element2_tag:
                     # 4.绘制线条
-                    gate_line_id = self.draw_arc(element1_id, element2_id, element1_tag, element2_tag)
+                    at_line_id = self.draw_arc(element1_id, element2_id, element1_tag, element2_tag)
                     self.AG_arc_selected2 = []
 
                     node_id = self.nodes[self.active_node_index][2]
                     # gate_lines
-                    gate_line_values = gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id
-                    self.gate_lines.append(gate_line_values)
-                    print("Gate_lines: ", self.gate_lines)
+                    at_line_values = at_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id
+                    self.at_lines.append(at_line_values)
+                    print("Gate_lines: ", self.at_lines)
 
-                    # self.andgates 添加 sub_vuls
+                    # self.andgates / orgates 添加 sub_vuls
                     if element2_tag == "and_gate_tag":
                         index = None
                         for i, andgate in enumerate(self.andgates):
@@ -1007,35 +1005,39 @@ class GUI:
                                 break
                         if index is not None:
                             self.orgates[index][5].append(element1_id)
+                    # connect to the root
+                    elif element2_tag == "root_tag":
+                        pass
                     else:
-                        print("WRONG gate line")
+                        print("WRONG AT line")
                     print("- - Append gates - -")
                     print(f"and gates: {self.andgates}")
                     print(f"or gates: {self.orgates}")
                     print("-- -- -- -- -- -- --")
 
-        elif self.mode == MODE_AT_ROOTNODE:
-            closest_element_id = None
-            closest_element_tags = None
-            closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
-            if closest_element_id:
-                element_id = closest_element_id[0]
-                closest_element_tags = self.AT_canvas.gettags(element_id)
-                element_tag = closest_element_tags[0]
-                if element_tag in "and_gate_tag":
-                    # Find the gate
-                    for index, andgate in enumerate(self.andgates):
-                        if andgate[2] == element_id:
-                            self.andgates[index] = (*self.andgates[index][:5], GATE_IS_ROOT)
-                             # set if root
-                            print("set the gate to root (info)", self.andgates[index])
-                            break
-                elif element_tag in "or_gate_tag" or element_tag in "or_gate_half_tag":
-                    for index, orgate in enumerate(self.orgates):
-                        if orgate[2] == element_id or orgate[3] == element_id:
-                            self.orgates[index] = (*self.orgates[index][:6], GATE_IS_ROOT)
-                            print("set the gate to root (info)", self.orgates[index])
-                            break
+        # elif self.mode == MODE_AT_ROOTNODE:
+        #     closest_element_id = None
+        #     closest_element_tags = None
+        #     closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
+        #     if closest_element_id:
+        #         element_id = closest_element_id[0]
+        #         closest_element_tags = self.AT_canvas.gettags(element_id)
+        #         element_tag = closest_element_tags[0]
+
+        #         if element_tag in "and_gate_tag":
+        #             # Find the gate
+        #             for index, andgate in enumerate(self.andgates):
+        #                 if andgate[2] == element_id:
+        #                     self.andgates[index] = (*self.andgates[index][:5], GATE_IS_ROOT)
+        #                      # set if root
+        #                     print("set the gate to root (info)", self.andgates[index])
+        #                     break
+        #         elif element_tag in "or_gate_tag" or element_tag in "or_gate_half_tag":
+        #             for index, orgate in enumerate(self.orgates):
+        #                 if orgate[2] == element_id or orgate[3] == element_id:
+        #                     self.orgates[index] = (*self.orgates[index][:6], GATE_IS_ROOT)
+        #                     print("set the gate to root (info)", self.orgates[index])
+        #                     break
 
     def draw_arc(self, id_1, id_2, tag_1, tag_2):
         # 获取元素中心坐标
@@ -1166,6 +1168,7 @@ class GUI:
 
     def vul_save(self, x, y):
         # 获取entry里的值
+        name = ""
         name = self.entry_name.get()
         prob_input = self.entry_prob.get()
         cost_input = self.entry_cost.get()
@@ -1198,7 +1201,8 @@ class GUI:
                 tags="vul_tag")
             node_id = self.nodes[self.active_node_index][2]
 
-        values = x, y, vul_id, node_id, vul_info # 存进列表
+        if_vul_root = VUL_NOT_ROOT
+        values = x, y, vul_id, node_id, vul_info, if_vul_root # 存进列表
         self.vulnerabilities.append(values)
         print("vul save end:", vul_info)
         print(self.vulnerabilities)
@@ -1207,6 +1211,37 @@ class GUI:
         # 关闭窗口，不显示vul
         print(self.vulnerabilities)
         vul_info_window.destroy()
+
+    def at_save(self):
+        # Find the at_line to root, save: which vuls are connected to root
+        for i, at_line in enumerate(self.at_lines):
+            at_lne_id = at_line[0]
+            at_line_element1_id = at_line[1]
+            at_line_element2_id = at_line[2]
+            at_line_element1_tag = at_line[3]
+            at_line_element2_tag = at_line[4]
+            if at_line_element2_tag in 'root_tag': # 连接到root的line
+                # find the vuls connected to this line
+                if at_line_element1_tag in "vul_tag":
+                    for j, vul in enumerate(self.vulnerabilities):
+                        if vul[2] == at_line_element1_id:
+                            self.vulnerabilities[j] = (*self.vulnerabilities[j][:5], VUL_IS_ROOT)
+                            print(f"set vul {vul[2]} to root, (info){self.vulnerabilities[j]}")
+                            break
+                # find the and gates connected to this line
+                elif at_line_element1_tag in 'and_gate_tag':
+                    for k, and_gate in enumerate(self.andgates):
+                        if and_gate[2] == at_line_element1_id:
+                            self.andgates[k] = (*self.andgates[k][:5], GATE_IS_ROOT)
+                            print(f"set and gate {and_gate[2]} to root, (info){and_gate}")
+                            break
+                # find the or gates connected to this line
+                elif at_line_element1_tag in "or_gate_tag" or at_line_element1_tag in "or_gate_half_tag":
+                    for l, or_gate in enumerate(self.orgates):
+                        if or_gate[2] == at_line_element1_id or or_gate[3] == at_line_element1_id:
+                            self.orgates[l] = (*self.orgates[l][:6], GATE_IS_ROOT)
+                            print(f"set or gate {or_gate[2]} to root, (info){or_gate}")
+                            break
 
     def run(self):
         self.root.mainloop()
