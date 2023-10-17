@@ -1127,16 +1127,14 @@ class GUI:
         global vul_info_window
         vul_info_window = tk.Toplevel(AT_window)
         vul_info_window.title("Edit Vulnerability")
-        vul_info_window.geometry('300x300')
+        vul_info_window.geometry('300x250')
         # Labels
         self.lbl_vul_name = ttk.Label(vul_info_window,text='Name:')
-        self.lbl_vul_risk = ttk.Label(vul_info_window,text='Risk:')
         self.lbl_vul_prob = ttk.Label(vul_info_window,text='Probability:')
         self.lbl_vul_cost = ttk.Label(vul_info_window,text='Cost:')
         self.lbl_vul_impt = ttk.Label(vul_info_window,text='Impact:')
         # Entries
         self.entry_name = ttk.Entry(vul_info_window, width=15)
-        self.entry_risk = ttk.Entry(vul_info_window, width=15)
         self.entry_prob = ttk.Entry(vul_info_window, width=15)
         self.entry_cost = ttk.Entry(vul_info_window, width=15)
         self.entry_impt = ttk.Entry(vul_info_window, width=15)
@@ -1155,23 +1153,20 @@ class GUI:
             style='D.TButton',
             command=self.vul_cancel
         )
-        self.btn_vul_save.place(x=30, y=250, anchor='nw')
-        self.btn_vul_cancel.place(x=160, y=250, anchor='nw')
+        self.btn_vul_save.place(x=30, y=200, anchor='nw')
+        self.btn_vul_cancel.place(x=160, y=200, anchor='nw')
         self.lbl_vul_name.place(x=30, y=30, anchor='nw')
-        self.lbl_vul_risk.place(x=30, y=70, anchor='nw')
-        self.lbl_vul_prob.place(x=30, y=110, anchor='nw')
-        self.lbl_vul_cost.place(x=30, y=150, anchor='nw')
-        self.lbl_vul_impt.place(x=30, y=190, anchor='nw')
+        self.lbl_vul_prob.place(x=30, y=70, anchor='nw')
+        self.lbl_vul_cost.place(x=30, y=110, anchor='nw')
+        self.lbl_vul_impt.place(x=30, y=150, anchor='nw')
         self.entry_name.place(x=140, y=30, anchor='nw')
-        self.entry_risk.place(x=140, y=70, anchor='nw')
-        self.entry_prob.place(x=140, y=110, anchor='nw')
-        self.entry_cost.place(x=140, y=150, anchor='nw')
-        self.entry_impt.place(x=140, y=190, anchor='nw')
+        self.entry_prob.place(x=140, y=70, anchor='nw')
+        self.entry_cost.place(x=140, y=110, anchor='nw')
+        self.entry_impt.place(x=140, y=150, anchor='nw')
 
     def vul_save(self, x, y):
         # 获取entry里的值
         name = self.entry_name.get()
-        risk_input = self.entry_risk.get()
         prob_input = self.entry_prob.get()
         cost_input = self.entry_cost.get()
         impt_input = self.entry_impt.get()
@@ -1181,10 +1176,10 @@ class GUI:
         cost = float(0)
         impt = float(0)
         try:
-            risk = float(risk_input)
             prob = float(prob_input)
             cost = float(cost_input)
             impt = float(impt_input)
+            risk = prob * impt
         except ValueError:
             print("invalid")
 
