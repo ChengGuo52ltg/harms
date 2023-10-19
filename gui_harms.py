@@ -39,12 +39,17 @@ GATE_NOT_ROOT = 0
 VUL_IS_ROOT = 1
 VUL_NOT_ROOT = 0
 
+# 设置弹出窗口的初始位置（x，y）
+X_POSITION = 500
+Y_POSITION = 300
 class GUI:
     def __init__(self):
         # self.client = None
         self.root = tk.Tk()
         self.root.title('Welcome to HARMs!')
-        self.root.geometry('750x450')
+        # self.root.geometry('750x450')
+        self.root.geometry(f'750x450+{X_POSITION}+{Y_POSITION}')
+
 
         # Style setting
         self.style = ttk.Style(self.root)
@@ -165,13 +170,12 @@ class GUI:
             width=5,
             command=self.AG_redo
         )
-
         
         self.btn_node.place(x=35, y=40, anchor='nw')
         self.btn_arc.place(x=35, y=100, anchor='nw')
-        self.btn_undo.place(x=20, y=160, anchor='nw')
-        self.btn_redo.place(x=90, y=160, anchor='nw')
-        self.btn_clear.place(x=35, y=220, anchor='nw')
+        self.btn_undo.place(x=20, y=200, anchor='nw')
+        self.btn_redo.place(x=90, y=200, anchor='nw')
+        self.btn_clear.place(x=35, y=260, anchor='nw')
         self.btn_analysis.place(x=35, y=370, anchor='nw')
 
 # --------------------------------------------------------------------------- Modes
@@ -265,19 +269,6 @@ class GUI:
             self.mode = MODE_NONE
             self.btn_AT_clear.config(style='D.TButton')
 
-    # def mode_AT_rootnode(self):
-    #     if self.mode != MODE_AT_ROOTNODE:
-    #         self.mode = MODE_AT_ROOTNODE
-    #         # self.btn_AT_rootnode.config(style='A.TButton')
-    #         #
-    #         self.btn_AT_vul.config(style='D.TButton')
-    #         self.btn_AT_AND.config(style='D.TButton')
-    #         self.btn_AT_OR.config(style='D.TButton')
-    #         self.btn_AT_arc.config(style='D.TButton')
-    #         self.btn_AT_clear.config(style='D.TButton')
-    #     else:
-    #         self.mode = MODE_NONE
-            # self.btn_AT_rootnode.config(style='D.TButton')
     # ---------------------------------------------------------------------------
 
     def add_node(self, x, y):
@@ -790,7 +781,7 @@ class GUI:
 
         popup = tk.Toplevel(self.root)
         popup.title("Harm Summary Result")
-        popup.geometry('500x300')
+        popup.geometry(f'500x300+{X_POSITION}+{Y_POSITION}')
 
         # 创建一个文本小部件来显示结果
         result_text = ScrolledText(popup, wrap=tk.WORD)
@@ -811,7 +802,7 @@ class GUI:
             title_text = str(self.nodes[self.active_node_index][4])
             node_id = self.nodes[self.active_node_index][2]
             AT_window.title("Attack Tree of " + title_text)
-            AT_window.geometry('700x450')
+            AT_window.geometry(f'700x450+{X_POSITION}+{Y_POSITION}')
 
             # Buttons
             self.btn_AT_vul = ttk.Button(
@@ -845,12 +836,6 @@ class GUI:
                 command=self.mode_AT_clear
             )
 
-            # self.btn_AT_rootnode = ttk.Button(
-            #     AT_window,
-            #     text='Rootnode',
-            #     style='D.TButton',
-            #     command=self.mode_AT_rootnode
-            # )
             self.btn_AT_save = ttk.Button(
                 AT_window,
                 text='Save',
@@ -980,31 +965,41 @@ class GUI:
                     self.at_lines.append(at_line_values)
                     print("Gate_lines: ", self.at_lines)
 
+                    # # 找出element1的node_id
+                    # element1_node_id = 0
+                    # if element1_tag == "vul_tag":
+                    #     for i, vul in enumerate(self.vulnerabilities):
+                    #         if vul[2] == element1_id:
+                    #             element1_node_id = vul[3]
+                    #             break
+
                     # self.andgates / orgates 添加 sub_vuls
                     if element2_tag == "and_gate_tag":
                         index = None
                         for i, andgate in enumerate(self.andgates):
-                            if andgate[2] == element2_id:
+                            if andgate[3] == node_id and andgate[2] == element2_id:
                                 index = i
                                 break
                         if index is not None:
                             self.andgates[index][4].append(element1_id)
-                    elif element2_tag == "or_gate_tag":
+                    elif element2_tag == "or_gate_tag" or element2_tag == "or_gate_half_tag":
                         index = None
                         for i, orgate in enumerate(self.orgates):
-                            if orgate[2] == element2_id:
-                                index = i
-                                break
+                            if orgate[4] == node_id:
+                                if orgate[2] == element2_id or orgate[3] == element2_id:
+                                    index = i
+                                    break
                         if index is not None:
                             self.orgates[index][5].append(element1_id)
-                    elif element2_tag == "or_gate_half_tag":
-                        index = None
-                        for i, orgate in enumerate(self.orgates):
-                            if orgate[3] == element2_id:
-                                index = i
-                                break
-                        if index is not None:
-                            self.orgates[index][5].append(element1_id)
+                    # elif element2_tag == "or_gate_half_tag":
+                    #     index = None
+                    #     for i, orgate in enumerate(self.orgates):
+                    #         if orgate[3] == element2_id:
+                    #             index = i
+                    #             break
+                    #     if index is not None:
+                    #         self.orgates[index][5].append(element1_id)
+                    
                     # connect to the root
                     elif element2_tag == "root_tag":
                         pass
@@ -1014,30 +1009,6 @@ class GUI:
                     print(f"and gates: {self.andgates}")
                     print(f"or gates: {self.orgates}")
                     print("-- -- -- -- -- -- --")
-
-        # elif self.mode == MODE_AT_ROOTNODE:
-        #     closest_element_id = None
-        #     closest_element_tags = None
-        #     closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
-        #     if closest_element_id:
-        #         element_id = closest_element_id[0]
-        #         closest_element_tags = self.AT_canvas.gettags(element_id)
-        #         element_tag = closest_element_tags[0]
-
-        #         if element_tag in "and_gate_tag":
-        #             # Find the gate
-        #             for index, andgate in enumerate(self.andgates):
-        #                 if andgate[2] == element_id:
-        #                     self.andgates[index] = (*self.andgates[index][:5], GATE_IS_ROOT)
-        #                      # set if root
-        #                     print("set the gate to root (info)", self.andgates[index])
-        #                     break
-        #         elif element_tag in "or_gate_tag" or element_tag in "or_gate_half_tag":
-        #             for index, orgate in enumerate(self.orgates):
-        #                 if orgate[2] == element_id or orgate[3] == element_id:
-        #                     self.orgates[index] = (*self.orgates[index][:6], GATE_IS_ROOT)
-        #                     print("set the gate to root (info)", self.orgates[index])
-        #                     break
 
     def draw_arc(self, id_1, id_2, tag_1, tag_2):
         # 获取元素中心坐标
@@ -1129,7 +1100,7 @@ class GUI:
         global vul_info_window
         vul_info_window = tk.Toplevel(AT_window)
         vul_info_window.title("Edit Vulnerability")
-        vul_info_window.geometry('300x250')
+        vul_info_window.geometry(f'300x250+{X_POSITION}+{Y_POSITION}')
         # Labels
         self.lbl_vul_name = ttk.Label(vul_info_window,text='Name:')
         self.lbl_vul_prob = ttk.Label(vul_info_window,text='Probability:')
@@ -1204,7 +1175,7 @@ class GUI:
         if_vul_root = VUL_NOT_ROOT
         values = x, y, vul_id, node_id, vul_info, if_vul_root # 存进列表
         self.vulnerabilities.append(values)
-        print("vul save end:", vul_info)
+        print("vul:", values)
         print(self.vulnerabilities)
     
     def vul_cancel(self):
