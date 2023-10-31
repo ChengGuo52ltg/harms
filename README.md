@@ -14,8 +14,10 @@ node1_id --> node2_id
 tags = "line"
 
 self.andgates = [(x, y, and_gate_id, node_id, sub_vuls={vul_id, vul_id, ...}, if_root), ()]
+tags = 'and_gate'
 
 self.orgates = [(x, y, or_gate_id, or_gate_half_id, node_id, sub_vuls={vul_id, vul_id, ...}, if_root), ()]
+tags = 'or_gate', 'or_half_gate'
 
 self.at_lines = [(at_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id), ()]
 vul_id/gate_id --> gate_id

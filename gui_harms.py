@@ -39,15 +39,13 @@ GATE_NOT_ROOT = 0
 VUL_IS_ROOT = 1
 VUL_NOT_ROOT = 0
 
-# 设置弹出窗口的初始位置（x，y）
+# Position of the window
 X_POSITION = 500
 Y_POSITION = 300
 class GUI:
     def __init__(self):
-        # self.client = None
         self.root = tk.Tk()
         self.root.title('Welcome to HARMs!')
-        # self.root.geometry('750x450')
         self.root.geometry(f'750x450+{X_POSITION}+{Y_POSITION}')
 
 
@@ -60,13 +58,12 @@ class GUI:
         self.style_default.configure('D.TButton', background='white', padding=(5, 10))
         
         # track history for undo and redo
-        self.history = []  # 用于存储撤销历史记录
+        self.history = []  # [(action, values), (action, values)]
         self.history_redo = []
 
-        # ---------------------------------
         self.mode = None
 
-        # 工具栏 Menu
+        # Menu
         self.menubar = Menu(self.root, tearoff=0)
         self.root.config(menu=self.menubar)
         # "File"
@@ -89,7 +86,7 @@ class GUI:
         self.menubar.add_cascade(label="View", menu=view_menu)
         self.menubar.add_cascade(label="Help")
 
-        # Canvas 画布
+        # Canvas
         self.canvas = tk.Canvas(
             self.root,
             width=570,
@@ -98,42 +95,38 @@ class GUI:
         )
         self.canvas.place(x=170, y=10, anchor='nw')
 
-        self.nodes = []  # 存储node信息，每个节点是一个元组 (x, y, id, label, name, name_id)
-        self.lines = []  # 储存arc信息 (x, y, line_id, node1_id, node2_id)
+        self.nodes = []
+        self.lines = []
 
-        # 左键功能
+        # left click, bind
         self.canvas.bind("<Button-1>", self.AG_left_click)
-        # 右键功能
+        # right click, bind
         self.canvas.bind("<Button-3>", self.AG_right_click)
     
-        # 创建右键Node菜单
+        # right click, menu
         self.node_menu = Menu(self.root, tearoff=0)
         self.node_menu.add_command(label="Set as attacker", command=self.set_attacker)
         self.node_menu.add_command(label="Set as target", command=self.set_target)
         self.node_menu.add_command(label="Open Lower Layer", command=self.open_attack_tree)
         self.node_menu.add_command(label="Rename", command=self.rename_node)
-        # self.opened_node_id = None
 
-        # arc - 用于存储两个选定的节点
+        # arc
         self.AG_arc_selected2 = []
         self.AT_arc_selected2 = [] # [(id,tags),(id,tags)]
 
         # ATTACK TREE:
-        self.vulnerabilities = []  # 用于存储漏洞信息的列表 
-        self.andgates = [] # 储存 [x, y, and_gate_id, node_id, sub_vuls={vul_id, vul_id, ...}]
-        self.orgates = [] # 储存 [x, y, or_gate_id, or_gate_half_id, node_id, sub_vuls={vul_id, vul_id, ...}]
-        self.at_lines = [] # [gate_line_id, element1_id, element2_id, element1_tag, element2_tag, node_id]
+        self.vulnerabilities = []  # list for vulnerabilities
+        self.andgates = []
+        self.orgates = []
+        self.at_lines = [] 
         self.roots = []
 
         # Buttons
-        # icon_dot = tk.PhotoImage(file="/home/chelsea/cheng_test/harms/dot.png")
         self.btn_node = ttk.Button(
             self.root,
             text='Node',
             style='D.TButton',
             command=self.mode_AG_node
-            # image=icon_dot,
-            # compound=tk.TOP
         )
         
         self.btn_arc = ttk.Button(
@@ -180,12 +173,12 @@ class GUI:
 
 # --------------------------------------------------------------------------- Modes
     def mode_AG_node(self):
-        if self.mode != MODE_AG_NODE: #选中mode模式
+        if self.mode != MODE_AG_NODE: # click this mode
             self.mode = MODE_AG_NODE
             self.btn_node.config(style='A.TButton')
-            # 其他按钮恢复
+            # recover other buttons
             self.btn_arc.config(style='D.TButton')
-        else: # 再按一次 取消node模式
+        else: # cancel this mode
             self.mode = MODE_NONE
             self.btn_node.config(style='D.TButton')
     
@@ -193,7 +186,6 @@ class GUI:
         if self.mode != MODE_AG_ARC:
             self.mode = MODE_AG_ARC
             self.btn_arc.config(style='A.TButton')
-            # 其他按钮恢复
             self.btn_node.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
@@ -203,12 +195,10 @@ class GUI:
         if self.mode != MODE_AT_VUL:
             self.mode = MODE_AT_VUL
             self.btn_AT_vul.config(style='A.TButton')
-            # 其他按钮恢复
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_vul.config(style='D.TButton')
@@ -217,12 +207,10 @@ class GUI:
         if self.mode != MODE_AT_AND:
             self.mode = MODE_AT_AND
             self.btn_AT_AND.config(style='A.TButton')
-            # 其他按钮恢复
             self.btn_AT_vul.config(style='D.TButton')
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_AND.config(style='D.TButton')
@@ -231,12 +219,10 @@ class GUI:
         if self.mode != MODE_AT_OR:
             self.mode = MODE_AT_OR
             self.btn_AT_OR.config(style='A.TButton')
-            # 其他按钮恢复
             self.btn_AT_vul.config(style='D.TButton')
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_arc.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_OR.config(style='D.TButton')
@@ -245,29 +231,13 @@ class GUI:
         if self.mode != MODE_AT_ARC:
             self.mode = MODE_AT_ARC
             self.btn_AT_arc.config(style='A.TButton')
-            # 其他按钮恢复
             self.btn_AT_vul.config(style='D.TButton')
             self.btn_AT_AND.config(style='D.TButton')
             self.btn_AT_OR.config(style='D.TButton')
             self.btn_AT_clear.config(style='D.TButton')
-            # self.btn_AT_rootnode.config(style='D.TButton')
         else: 
             self.mode = MODE_NONE
             self.btn_AT_arc.config(style='D.TButton')
-
-    def mode_AT_clear(self):
-        if self.mode != MODE_AT_CLEAR:
-            self.mode = MODE_AT_CLEAR
-            self.btn_AT_clear.config(style='A.TButton')
-            # 其他按钮恢复
-            self.btn_AT_vul.config(style='D.TButton')
-            self.btn_AT_AND.config(style='D.TButton')
-            self.btn_AT_OR.config(style='D.TButton')
-            self.btn_AT_arc.config(style='D.TButton')
-            # self.btn_AT_rootnode.config(style='D.TButton')
-        else: 
-            self.mode = MODE_NONE
-            self.btn_AT_clear.config(style='D.TButton')
 
     # ---------------------------------------------------------------------------
 
@@ -294,7 +264,7 @@ class GUI:
             self.canvas.delete(node_id)
             self.canvas.delete(name_id)
 
-            # 从self.nodes列表中删除了具有指定vul_id的元素
+            # delete self.nodes with certain vul_id
             self.nodes[:] = [node for node in self.nodes if node[2] != node_id] 
             print("delete node ", node_id)
 
@@ -386,19 +356,18 @@ class GUI:
             self.lines[:] = [line for line in self.lines if line[2] != closest_line_id] 
             print("delete arc", closest_line_id)
             
-        
     def AG_left_click(self, event):
         x, y = event.x, event.y
 
         if self.mode == MODE_AG_NODE:
-            # NODE: 左键单击画布来添加节点，通过右键单击节点来删除它。节点以蓝色圆点的形式表示。
+            # NODE: add node when left click, delete node when right click
             out = self.add_node(x, y)
             if out == 1:
                 # Add the last node to history
                 self.history.append(("add_node", self.nodes[-1]))
 
         elif self.mode == MODE_AG_ARC:
-            # ARC: 绘制线条 - 选中点
+            # ARC: choose nodes to add arc
             out = self.ag_add_arc(x, y)
             if out == 1:
                 # Add the last node to history
@@ -433,18 +402,18 @@ class GUI:
     # ---------------------------------------------------------------------------
     def set_attacker(self):
         if hasattr(self, "active_node_index"):
-            # 属性,name设置
+            # set name as attacker
             new_name = "Attacker"
             self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:3], NODE_ATTACKER, new_name, *self.nodes[self.active_node_index][5:])
-            # 删除原来的name_id, update text
-            self.canvas.delete(self.nodes[self.active_node_index][5]) # 删除text
+            # delete the original name_id, update text
+            self.canvas.delete(self.nodes[self.active_node_index][5]) # delete text
             x = self.nodes[self.active_node_index][0]
             y = self.nodes[self.active_node_index][1]
             new_name_id = self.canvas.create_text(x, y + 20, text=new_name, fill="black", anchor="center")
-            # 替换成新的name_id
+            # replace by new name_id
             self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:5], new_name_id)
             print("attacker: ", self.nodes[self.active_node_index])
-            # 改变颜色
+            # change color
             item_id = self.nodes[self.active_node_index][2]
             self.canvas.itemconfig(item_id, fill="pink")
         
@@ -458,22 +427,22 @@ class GUI:
             new_name_id = self.canvas.create_text(x, y + 20, text=new_name, fill="black", anchor="center")
             self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:5], new_name_id)
             print("target: ", self.nodes[self.active_node_index])
-            # 改变颜色
+            # change color
             item_id = self.nodes[self.active_node_index][2]
             self.canvas.itemconfig(item_id, fill="light green")
     
     def rename_node(self):
         if hasattr(self, "active_node_index"):
-            # 属性,name设置
+            # set name
             new_name = simpledialog.askstring("Rename", "Enter a new name:")
             if new_name is not None:
                 self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:3], NODE_HOST, new_name, *self.nodes[self.active_node_index][5:])
-                # 删除原来的name_id, update text
-                self.canvas.delete(self.nodes[self.active_node_index][5]) # 删除text
+                # delete the original name_id, update text
+                self.canvas.delete(self.nodes[self.active_node_index][5])
                 x = self.nodes[self.active_node_index][0]
                 y = self.nodes[self.active_node_index][1]
                 new_name_id = self.canvas.create_text(x, y + 20, text=str(new_name), fill="black", anchor="center")
-                # 替换成新的name_id
+                # replace by new name_id
                 self.nodes[self.active_node_index] = (*self.nodes[self.active_node_index][:5], new_name_id)
                 print("rename: ", self.nodes[self.active_node_index])
     
@@ -549,8 +518,7 @@ class GUI:
         h = hm.Harm()
         # create the top layer of the harm
         h.top_layer = hm.AttackGraph()
-        # hosts 查看目前的nodes个数
-        # 除去attacker(label==1)
+
         self.nodes_withoutattacker = [node for node in self.nodes if node[3] != 1]
         count_expect_attacker = len(self.nodes_withoutattacker)
         hosts = [hm.Host("Host {}".format(i)) for i in range(count_expect_attacker)]
@@ -558,30 +526,21 @@ class GUI:
         print(self.nodes)
         print(self.nodes_withoutattacker)
 
-        # 设置 vulnerabilities
-        # 1. 检查self.vulnerabilities, node_id - host
-        # 2. 对每一个设置好的host 添加vul; 设置好and or gate
-        # 3. set attacker, target
-        # 4. set arcs
-        # 5. flowup()
-        # 6. report analysis
-
         print("all vuls: ", self.vulnerabilities)
 
         for index, host in enumerate(hosts):
             host.lower_layer = hm.AttackTree()
 
-            # e.g. index=0
-            # hosts[0]对应的self.nodes_withoutattacker[0] 的node_id是多少
+            # e.g. index=0, what's the node_id under hosts[0] //self.nodes_withoutattacker[0]
             node_id = self.nodes_withoutattacker[index][2]
             print("host's node_id = ", node_id)
 
-            # 筛选这个node_id下的vul 
+            # vuls under certain node_id
             vuls = None
             vuls = [vul for vul in self.vulnerabilities if vul[3] == node_id]
             print("host's vuls = ", vuls)
+
             # make vuls
-            # ...
             if vuls:
                 at_vulnerabilities_list = []
                 for vul in vuls:
@@ -601,7 +560,7 @@ class GUI:
                         host.lower_layer.at_add_node(vulnerability)
                 print(at_vulnerabilities_list)
             
-                # 筛选出这个node_id 下的gates
+                # gates under certain node_id
                 and_gates = None
                 and_gates = [and_gate for and_gate in self.andgates if and_gate[3] == node_id]
                 print("host's and_gates = ", and_gates)
@@ -610,15 +569,12 @@ class GUI:
                 print("host's or_gates = ", or_gates)
 
                 # make gates
-                # ...
-                # 对每一个gate
                 at_and_gate_list = []
                 at_or_gate_list = []
                 for and_gate in and_gates:
                     at_and_gate = hm.LogicGate(gatetype='and')
                     at_and_gate_list.append(at_and_gate)
-                    # ROOTNODE:
-                    # 如果gate是root 把logicGate连到rootnode: 直接用at_add_node
+                    # ROOTNODE:if gate is root, connect logigate to rootnode, use at_add_node
                     if and_gate[5] == GATE_IS_ROOT:
                         host.lower_layer.at_add_node(at_and_gate)
 
@@ -630,7 +586,7 @@ class GUI:
 
                 for i, and_gate in enumerate(and_gates):
                     for element_id in and_gate[4]:
-                        # 根据element_id 推出这个是vuls[?] 
+                        # element_id ---> vuls[?] 
                         vuls_index = None
                         andgate_index = None
                         orgate_index = None
@@ -642,7 +598,7 @@ class GUI:
                             host.lower_layer.at_add_node(at_vulnerabilities_list[vuls_index], logic_gate=at_and_gate_list[i]) #  def at_add_node(self, node, logic_gate=None)
                             print(f"add sub_vul (id){element_id} to and gate (info){and_gate}")
                         else:
-                            # 或者是哪个gate? element_id 对应哪个and_gate或or_gate
+                            # gate? element_id ----> and_gate or_gate
                             for y, element_and in enumerate(and_gates):
                                 if element_id == element_and[2]:
                                     andgate_index = y
@@ -651,7 +607,7 @@ class GUI:
                                 host.lower_layer.at_add_node(at_and_gate_list[andgate_index], logic_gate=at_and_gate_list[i])
                                 print(f"add sub_and (id){element_id} to and gate (info){and_gate}")
                             else:
-                                # 或者是哪个orgate
+                                # or orgate
                                 for z, element_or in enumerate(or_gates):
                                     if element_id == element_or[2] or element_id == element_or[3]:
                                         orgate_index = z
@@ -701,16 +657,12 @@ class GUI:
         # the potential entry points of attackers.
         attacker = hm.Attacker() 
 
-        # To add edges we simply use the add_edge function
-        # here h[0] refers to the top layer
-        # add_edge(A,B) creates a uni-directional from A -> B.
-
-        # 默认host[0]是attacker
-        # 根据self.lines
+        # default: host[0] is attacker
+        # for self.lines
         for line in self.lines:
             print("For arc:", line)
 
-            # 找出self.lines[3][4]对应的node_id - 起始、结束点
+            # self.lines[3][4] is node_id - start, end
             node_id_to_find_1 = line[3]
             node_id_to_find_2 = line[4]
             # if node_id_to_find == attacker_node_id
@@ -748,8 +700,8 @@ class GUI:
 
         # Now we set the attacker and target
         h[0].source = attacker # type: ignore
-        # 找出哪个是target
-        
+
+        # find target
         target_index = None
         for i, node in enumerate(self.nodes_withoutattacker):
             if node[3] == NODE_TARGET:
@@ -773,22 +725,18 @@ class GUI:
         output_buffer = io.StringIO()
         with contextlib.redirect_stdout(output_buffer):
             summary.show()
-        # 获取输出结果
+    
         output_result = output_buffer.getvalue()
-
-        # 现在你可以访问 output_result 来获取打印的结果
-        print("hi:", output_result)
 
         popup = tk.Toplevel(self.root)
         popup.title("Harm Summary Result")
         popup.geometry(f'500x300+{X_POSITION}+{Y_POSITION}')
 
-        # 创建一个文本小部件来显示结果
         result_text = ScrolledText(popup, wrap=tk.WORD)
         result_text.pack(fill=tk.BOTH, expand=True)
         if output_result is not None:
-            result_text.insert('1.0', output_result)  # 插入Harm Summary结果
-        result_text.configure(state='disabled')  # 禁用文本小部件以避免编辑
+            result_text.insert('1.0', output_result)  
+        result_text.configure(state='disabled')  # disablt to edit
 
         close_button = tk.Button(popup, text="Close", command=popup.destroy)
         close_button.pack()
@@ -833,7 +781,7 @@ class GUI:
                 AT_window,
                 text='Clear',
                 style='D.TButton',
-                command=self.mode_AT_clear
+                command=self.at_clear
             )
 
             self.btn_AT_save = ttk.Button(
@@ -848,10 +796,9 @@ class GUI:
             self.btn_AT_AND.place(x=20, y=160, anchor='nw')
             self.btn_AT_OR.place(x=20, y=220, anchor='nw')
             self.btn_AT_save.place(x=20, y=280, anchor='nw')
-            # self.btn_AT_rootnode.place(x=20, y=280, anchor='nw')
             self.btn_AT_clear.place(x=20, y=340, anchor='nw')
 
-            # Canvas 画布
+            # Canvas
             self.AT_canvas = tk.Canvas(
                 AT_window,
                 width=550,
@@ -863,7 +810,7 @@ class GUI:
             self.AT_canvas.bind("<Button-1>", self.AT_left_click)
             self.AT_canvas.bind("<Button-3>", self.AT_right_click)
 
-            # 自动创建一个ROOTNODE
+            # Create one ROOTNODE
             x = 280
             y = 30
             root_id = self.AT_canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill="light blue", tags='root_tag')
@@ -1191,28 +1138,41 @@ class GUI:
             at_line_element2_id = at_line[2]
             at_line_element1_tag = at_line[3]
             at_line_element2_tag = at_line[4]
+            node_id = self.nodes[self.active_node_index][2]
+
             if at_line_element2_tag in 'root_tag': # 连接到root的line
                 # find the vuls connected to this line
                 if at_line_element1_tag in "vul_tag":
                     for j, vul in enumerate(self.vulnerabilities):
-                        if vul[2] == at_line_element1_id:
-                            self.vulnerabilities[j] = (*self.vulnerabilities[j][:5], VUL_IS_ROOT)
-                            print(f"set vul {vul[2]} to root, (info){self.vulnerabilities[j]}")
-                            break
+                        if vul[3] == node_id:
+                            if vul[2] == at_line_element1_id:
+                                self.vulnerabilities[j] = (*self.vulnerabilities[j][:5], VUL_IS_ROOT)
+                                print(f"set vul {vul[2]} to root, (info){self.vulnerabilities[j]}")
+                                break
                 # find the and gates connected to this line
                 elif at_line_element1_tag in 'and_gate_tag':
                     for k, and_gate in enumerate(self.andgates):
-                        if and_gate[2] == at_line_element1_id:
-                            self.andgates[k] = (*self.andgates[k][:5], GATE_IS_ROOT)
-                            print(f"set and gate {and_gate[2]} to root, (info){and_gate}")
-                            break
+                        if and_gate[3] == node_id:
+                            if and_gate[2] == at_line_element1_id:
+                                self.andgates[k] = (*self.andgates[k][:5], GATE_IS_ROOT)
+                                print(f"set and gate {and_gate[2]} to root, (info){and_gate}")
+                                break
                 # find the or gates connected to this line
                 elif at_line_element1_tag in "or_gate_tag" or at_line_element1_tag in "or_gate_half_tag":
                     for l, or_gate in enumerate(self.orgates):
-                        if or_gate[2] == at_line_element1_id or or_gate[3] == at_line_element1_id:
-                            self.orgates[l] = (*self.orgates[l][:6], GATE_IS_ROOT)
-                            print(f"set or gate {or_gate[2]} to root, (info){or_gate}")
-                            break
+                        if or_gate[4] == node_id:   
+                            if or_gate[2] == at_line_element1_id or or_gate[3] == at_line_element1_id:
+                                self.orgates[l] = (*self.orgates[l][:6], GATE_IS_ROOT)
+                                print(f"set or gate {or_gate[2]} to root, (info){or_gate}")
+                                break
+            
+            # close the window
+            AT_window.destroy()
+            self.mode = MODE_NONE
+    
+    def at_clear(self):
+        self.AT_canvas.delete("all")
+
 
     def run(self):
         self.root.mainloop()
