@@ -1,7 +1,9 @@
-# GUI of harms
-thesis project
+# Graphical User Interface of Harms
+This is the GUI of the exsisting Harmat engine.
+Link...
 
-Variables: 
+
+Data saved as these variables: 
 
 self.nodes = [(x, y, node_id, label, name, name_id), ()]
 
