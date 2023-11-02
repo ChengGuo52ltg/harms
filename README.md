@@ -1,8 +1,47 @@
 # Graphical User Interface of Harms
-This is the GUI of the exsisting Harmat engine.
-Link...
+
+This is the GUI of the existing Harmat engine.
+
+Link： https://github.com/whistlebee/harmat
+
+## Installation
+
+Make sure you have followed the steps in the link and set up harmat.
+
+```bash
+git clone https://github.com/ChengGuo52ltg/harms
+```
+
+## Usage
+
+```bash
+cd harms
+cd dist
+./gui_harms
+```
+
+Here is an example of generating analysis.
+
+1) Create nodes & arcs
+
+2) Set attacker & target
+
+3) Open the lower layer of each host (including target)
+
+4) Create vulnerabilities, enter information of them
+
+5) Create gates
+
+6) Draw arcs
+
+7) Connect vulnerability or gate to the root node using arc
+
+8) Save attack tree
+
+9) Click ‘Analysis’ to get the report
 
 
+## variables
 Data saved as these variables: 
 
 self.nodes = [(x, y, node_id, label, name, name_id), ()]

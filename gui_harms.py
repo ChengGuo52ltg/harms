@@ -2,14 +2,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox, Menu
 from tkinter import simpledialog
 from tkinter.scrolledtext import ScrolledText
-# import subprocess
 import io
 import contextlib
 
 
 import harmat as hm
 from requests import delete
-from tabulate import tabulate  # 需要安装tabulate库来格式化表格数据
+from tabulate import tabulate
 import statistics
 
 # Modes
@@ -276,30 +275,29 @@ class GUI:
             node_id = closest_node[0]
             self.AG_arc_selected2.append(node_id)
             print("select node for arc",node_id)
-            if len(self.AG_arc_selected2) == 2: # 选定了两个节点，绘制线条
+            if len(self.AG_arc_selected2) == 2: # choose two node
                 node1_id, node2_id = self.AG_arc_selected2
                 line_id = self.draw_arrow_line(node1_id, node2_id)
-                # 储存line
+                # store line
                 values = x, y, line_id, node1_id, node2_id
                 self.lines.append(values)
                 print("print arc", line_id, "from", node1_id, "to", node2_id)
-                # 清空
+                # clear
                 self.AG_arc_selected2 = []
 
                 return 1
             else:
                 return 0
 
-    # 绘制带箭头的直线
     def draw_arrow_line(self, node1_id, node2_id):
-        # 获取节点1的圆心坐标
+        # get node 1 center coordinate
         x1, y1 = self.get_node_center(node1_id)
-        # 获取节点2的圆心坐标
+        # get node 2 center coordinate
         x2, y2 = self.get_node_center(node2_id)
 
-        # 调整起始点和结束点的坐标，分别向中心点靠近一定的距离
+        # adjust the positions of start and end points, move closer to the center point by a certain distance
         line_length = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
-        shorten_distance = 20  # 设置要缩短的距离
+        shorten_distance = 20  # shorten distance
         if line_length > shorten_distance:
             ratio = shorten_distance / line_length
             x1_shortened = x1 + (x2 - x1) * ratio
@@ -307,23 +305,20 @@ class GUI:
             x2_shortened = x2 - (x2 - x1) * ratio
             y2_shortened = y2 - (y2 - y1) * ratio
         else:
-            # 如果直线太短，不进行缩短
+            # if too short, do not shorten
             x1_shortened, y1_shortened = x1, y1
             x2_shortened, y2_shortened = x2, y2
 
-        # 绘制直线
+        # draw line
         line_id = self.canvas.create_line(
             x1_shortened, y1_shortened, x2_shortened, y2_shortened,
             arrow=tk.LAST, width=2, fill="black", tags="line")
         return line_id
-        # 可以存储线条的 ID 或其他信息，以便将来对线条进行管理或删除
-        # self.lines.append(line_id)
 
-    # 获取节点的圆心坐标
+    # get node center coordinate
     def get_node_center(self, node_id):
-        # 获取节点的坐标范围
         x1, y1, x2, y2 = self.canvas.coords(node_id)
-        # 计算圆心坐标
+        # calculate the center point
         x_center = (x1 + x2) / 2
         y_center = (y1 + y2) / 2
         return x_center, y_center
@@ -334,14 +329,14 @@ class GUI:
         closest_line_id = None
         closest_distance = float("inf")
 
-        # 计算最近的线条
+        # find closest line
         for line_id in lines_id:
-            # 获取线条的坐标信息
+            # get line coordinates
             x1, y1, x2, y2 = self.canvas.coords(line_id)
-            # 计算鼠标点击点到线条的距离
+            # calculate the distance from the point to the line
             distance = ((x2 - x1) * (y1 - y) - (x1 - x) * (y2 - y1)) / ((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-            # 如果距离更近，则更新最近的线条和距离
+            # update the closest line
             if abs(distance) < closest_distance:
                 closest_line_id = line_id
                 closest_distance = abs(distance)
@@ -386,16 +381,15 @@ class GUI:
             self.ag_remove_arc(x, y)
 
         elif self.mode == MODE_NONE:
-            # NONE: 不在任何模式下，右键选中node弹出菜单
+            # NONE: right click to show menu
             closest_node = self.canvas.find_closest(x, y)
             if closest_node:
-                node_id = closest_node[0] # 右击->获取最近的node_id
-                # self.opened_node_id = node_id # 储存打开的node_id
-                self.node_menu.post(event.x_root, event.y_root)  # 在鼠标位置显示右键菜单
-                # 将右键菜单关联到当前节点
+                node_id = closest_node[0] # get the closest node
+                self.node_menu.post(event.x_root, event.y_root)  # show menu
+                # find the node in self.nodes
                 for i, node in enumerate(self.nodes):
-                    if node[2] == node_id: # 对每一个node: (x, y, id, label, name)
-                        self.active_node_index = i # 第几个
+                    if node[2] == node_id: # for each node: (x, y, id, label, name)
+                        self.active_node_index = i
                         print('show menu of node: ', node, ' id:', node_id)
                         break
     
@@ -465,9 +459,9 @@ class GUI:
     
     def AG_undo(self):
         if self.history:
-            # 从历史记录中获取上一个操作
+            # get the previous operation from the history
             action, values = self.history.pop()
-            # 执行相应的撤销操作
+            # perform the corresponding undo operation
             if action == "add_node":
                 x = values[0]
                 y = values[1]
@@ -492,9 +486,9 @@ class GUI:
     
     def AG_redo(self):
         if self.history_redo:
-            # 从重做历史记录中获取下一个操作
+            # get the next operation from the history
             action, values = self.history_redo.pop()
-            # 执行相应的重做操作
+            # perform the corresponding redo operation
             if action == "add_node":
                 # get x, y from values
                 x, y = values[:2]
@@ -819,21 +813,16 @@ class GUI:
     # --------------------------------------------------------------
     def AT_left_click(self, event):
         x, y = event.x, event.y
-        # VUL: 添加Vul
+        # VUL: add vul when left click, delete vul when right click
         if self.mode == MODE_AT_VUL:
-            # 弹出输入信息框，获取用户输入
-            # self.vul_info = None
             self.get_vulnerability_info(x,y)
-            # save->保存->根据vul_info["Name"]创建文本；cancel->关闭界面
             
-        # AND: 添加 and gate
+        # AND: add and gate
         elif self.mode == MODE_AT_AND:
-            radius = 30  # AND GATE 半径 - 决定大小
-            # 计算半圆的起始角度和结束角度
+            radius = 30  # AND GATE 
             start_angle = 0
             end_angle = 180
 
-            # 绘制半圆形 AND GATE
             and_gate_id = self.AT_canvas.create_arc(
                 x - radius, y - radius, x + radius, y + radius,
                 start=start_angle, extent=end_angle,
@@ -850,15 +839,14 @@ class GUI:
             print(f"add AND gate, id={and_gate_id}")
             print(f"info: {values}")
             
-        # OR: 添加 or gate
+        # OR: add or gate
         elif self.mode == MODE_AT_OR:
-            radius_1 = 30  # OR GATE 半径
+            radius_1 = 30  # OR GATE 
             radius_2 = 15  
-            # 计算半圆的起始角度和结束角度
+
             start_angle = 0
             end_angle = 180
 
-            # 绘制半圆形 OR GATE
             or_gate_id = self.AT_canvas.create_arc(
                 x - radius_1, y - radius_1, x + radius_1, y + radius_1,
                 start=start_angle, extent=end_angle,
@@ -866,7 +854,6 @@ class GUI:
                 style=tk.ARC,
                 tags='or_gate_tag')
 
-            # 绘制连接线 OR GATE
             or_gate_half_id = self.AT_canvas.create_arc(
                 x - radius_1, y - radius_2, x + radius_1, y + radius_2,
                 start=0, extent=180,
@@ -884,25 +871,25 @@ class GUI:
             print(f"add OR gate id={or_gate_id}+{or_gate_half_id}")
             print(f"info: {values}")
 
-        # ARC: 添加 ARC
+        # ARC: add ARC
         elif self.mode == MODE_AT_ARC:
-            # 1.最近的元素
-            closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
+            # 1. fine the closest element
+            closest_element_id = self.AT_canvas.find_closest(x, y)
             if closest_element_id:
                 element_id = closest_element_id[0]
                 closest_element_tags = self.AT_canvas.gettags(element_id)
                 element_tags = closest_element_tags[0]
-                # 2.保存进 AG_arc_selected2，保存id和tag
+                # 2. save the element_id and element_tags
                 values = element_id, element_tags
                 self.AG_arc_selected2.append(values)
                 print("select element", values)
-                # 3.满了两个 (必须是 vul->门,或者 门->门)
+                # 3. if 2 elements are selected, draw arc
                 if len(self.AG_arc_selected2) == 2:
                     element1_id, element1_tag = self.AG_arc_selected2[0]
                     element2_id, element2_tag = self.AG_arc_selected2[1]
                     print("draw between", element1_id, element2_id)
                     # if 'vul_tag' not in element2_tag:
-                    # 4.绘制线条
+                    # 4. draw arc
                     at_line_id = self.draw_arc(element1_id, element2_id, element1_tag, element2_tag)
                     self.AG_arc_selected2 = []
 
@@ -912,15 +899,6 @@ class GUI:
                     self.at_lines.append(at_line_values)
                     print("Gate_lines: ", self.at_lines)
 
-                    # # 找出element1的node_id
-                    # element1_node_id = 0
-                    # if element1_tag == "vul_tag":
-                    #     for i, vul in enumerate(self.vulnerabilities):
-                    #         if vul[2] == element1_id:
-                    #             element1_node_id = vul[3]
-                    #             break
-
-                    # self.andgates / orgates 添加 sub_vuls
                     if element2_tag == "and_gate_tag":
                         index = None
                         for i, andgate in enumerate(self.andgates):
@@ -938,14 +916,6 @@ class GUI:
                                     break
                         if index is not None:
                             self.orgates[index][5].append(element1_id)
-                    # elif element2_tag == "or_gate_half_tag":
-                    #     index = None
-                    #     for i, orgate in enumerate(self.orgates):
-                    #         if orgate[3] == element2_id:
-                    #             index = i
-                    #             break
-                    #     if index is not None:
-                    #         self.orgates[index][5].append(element1_id)
                     
                     # connect to the root
                     elif element2_tag == "root_tag":
@@ -958,12 +928,10 @@ class GUI:
                     print("-- -- -- -- -- -- --")
 
     def draw_arc(self, id_1, id_2, tag_1, tag_2):
-        # 获取元素中心坐标
         x1, y1 = self.get_element_center(id_1, tag_1)
         x2, y2 = self.get_element_center(id_2, tag_2)
-        # 调整起始点和结束点的坐标，分别向中心点靠近一定的距离
         line_length = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
-        shorten_distance = 30  # 设置要缩短的距离
+        shorten_distance = 30  
         if line_length > shorten_distance:
             ratio = shorten_distance / line_length
             x1_shortened = x1 + (x2 - x1) * ratio
@@ -971,22 +939,18 @@ class GUI:
             x2_shortened = x2 - (x2 - x1) * ratio
             y2_shortened = y2 - (y2 - y1) * ratio
         else:
-            # 如果直线太短，不进行缩短
             x1_shortened, y1_shortened = x1, y1
             x2_shortened, y2_shortened = x2, y2
-        # 绘制直线
         gate_line_id = self.AT_canvas.create_line(
             x1_shortened, y1_shortened, x2_shortened, y2_shortened,
             arrow=tk.LAST, width=2, fill="black")
         return gate_line_id
 
     def get_element_center(self, id, tag):
-        # 获取坐标范围
         if 'vul_tag' in tag:
             x1, y1, x2, y2 = self.AT_canvas.bbox(id)
         else:
             x1, y1, x2, y2 = self.AT_canvas.coords(id)
-        # 计算圆心坐标
         x_center = (x1 + x2) / 2
         y_center = (y1 + y2) / 2
         return x_center, y_center
@@ -994,10 +958,10 @@ class GUI:
     def AT_right_click(self, event):
         x, y = event.x, event.y
 
-        # VUL: 删除Vul
+        # VUL: remove Vul
         if self.mode == MODE_AT_VUL:
             vul_id = 0
-            closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
+            closest_element_id = self.AT_canvas.find_closest(x, y) 
             element_tags = self.AT_canvas.gettags(closest_element_id[0])
             if "vul_tag" in element_tags:
                 vul_id = closest_element_id[0]
@@ -1006,10 +970,10 @@ class GUI:
                 self.vulnerabilities[:] = [vul for vul in self.vulnerabilities if vul[2] != vul_id]
                 print("delete vul ", vul_id, ' from node x ')
         
-        # AND: 删除 AND gate
+        # AND: remove AND gate
         elif self.mode == MODE_AT_AND:
             and_id = 0
-            closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
+            closest_element_id = self.AT_canvas.find_closest(x, y)
             element_tags = self.AT_canvas.gettags(closest_element_id[0])
             if "and_gate_tag" in element_tags:
                 and_id = closest_element_id[0]
@@ -1019,17 +983,17 @@ class GUI:
                 print("delete AND ", and_id)
                 print("current and gates:", self.andgates)
 
-        # OR: 删除 OR gate
+        # OR: remove OR gate
         elif self.mode == MODE_AT_OR:
             or_id = 0
             closest_or_half_id = 0
-            closest_element_id = self.AT_canvas.find_closest(x, y) # 最近的
+            closest_element_id = self.AT_canvas.find_closest(x, y) 
             element_tags = self.AT_canvas.gettags(closest_element_id[0])
             if "or_gate_tag" in element_tags:
                 or_id = closest_element_id[0]
             if or_id:
                 self.AT_canvas.delete(or_id)
-                closest_or_half_id = self.AT_canvas.find_closest(x, y) # 最近的or gate half
+                closest_or_half_id = self.AT_canvas.find_closest(x, y) 
                 closest_or_half_tags = self.AT_canvas.gettags(closest_or_half_id[0])
                 
                 or_half_id = None
@@ -1043,7 +1007,7 @@ class GUI:
                     print("current or gates:", self.orgates)
                 
     def get_vulnerability_info(self, x, y):
-        # 弹出新界面,获取vulnerability info
+        # new window, get vulnerability info
         global vul_info_window
         vul_info_window = tk.Toplevel(AT_window)
         vul_info_window.title("Edit Vulnerability")
@@ -1085,7 +1049,6 @@ class GUI:
         self.entry_impt.place(x=140, y=150, anchor='nw')
 
     def vul_save(self, x, y):
-        # 获取entry里的值
         name = ""
         name = self.entry_name.get()
         prob_input = self.entry_prob.get()
@@ -1104,7 +1067,6 @@ class GUI:
         except ValueError:
             print("invalid")
 
-        # 赋值保存
         vul_info = {"Name": name, "Risk": risk, "Probability": prob, "Cost": cost, "Impact": impt}
         
         vul_info_window.destroy()
@@ -1112,7 +1074,7 @@ class GUI:
         vul_id = None
         node_id = None
         if vul_info:
-            text = vul_info["Name"] # 创建文本
+            text = vul_info["Name"] 
             vul_id = self.AT_canvas.create_text(
                 x, y, text=text, 
                 font=("Arial", 12), anchor="nw",
@@ -1120,13 +1082,12 @@ class GUI:
             node_id = self.nodes[self.active_node_index][2]
 
         if_vul_root = VUL_NOT_ROOT
-        values = x, y, vul_id, node_id, vul_info, if_vul_root # 存进列表
+        values = x, y, vul_id, node_id, vul_info, if_vul_root 
         self.vulnerabilities.append(values)
         print("vul:", values)
         print(self.vulnerabilities)
     
     def vul_cancel(self):
-        # 关闭窗口，不显示vul
         print(self.vulnerabilities)
         vul_info_window.destroy()
 
@@ -1140,7 +1101,7 @@ class GUI:
             at_line_element2_tag = at_line[4]
             node_id = self.nodes[self.active_node_index][2]
 
-            if at_line_element2_tag in 'root_tag': # 连接到root的line
+            if at_line_element2_tag in 'root_tag': 
                 # find the vuls connected to this line
                 if at_line_element1_tag in "vul_tag":
                     for j, vul in enumerate(self.vulnerabilities):
