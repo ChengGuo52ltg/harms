@@ -39,10 +39,13 @@ Here is an example of generating analysis.
 7) Connect vulnerability or gate to the root node using arc
 
 8) Save attack tree
+
 ![image](https://github.com/ChengGuo52ltg/harms/assets/93461778/8e1e1c09-181e-4697-8cc6-35b1960f2aba)
+
 ![image](https://github.com/ChengGuo52ltg/harms/assets/93461778/7bb0584a-85bd-49c4-8ad6-da86a7202d2a)
 
-9) Click ‘Analysis’ to get the report
+10) Click ‘Analysis’ to get the report
+
 ![image](https://github.com/ChengGuo52ltg/harms/assets/93461778/f2e27a34-96c0-43fe-8f9a-51f4209ee0af)
 
 
